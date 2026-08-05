@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://car-rental-api-multiverselimited01-8871s-projects.vercel.app/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://car-rental-api-multiverselimited01-8871s-projects.vercel.app/uploads/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
