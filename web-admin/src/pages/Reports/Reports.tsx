@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, CardHeader, CardTitle, EmptyState, Input, Spinner, StatCard } from '@rental/shared';
-import { api, getToken } from '../../api/client';
+import { api, getToken, API_BASE } from '../../api/client';
 
 interface ReportsSummary {
   revenue_by_vehicle: { vehicle_id: string; make: string; model: string; plate_number: string; revenue: number; bookings: number }[];
@@ -30,7 +30,7 @@ export function Reports() {
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     if (report) params.set('report', report);
-    const res = await fetch(`/api/reports/export.${kind}?${params.toString()}`, {
+    const res = await fetch(`${API_BASE}/api/reports/export.${kind}?${params.toString()}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
     const blob = await res.blob();

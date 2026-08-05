@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button, Card, CardHeader, CardTitle, EmptyState, Input, Select, Spinner, StatusBadge } from '@rental/shared';
 import type { Vehicle, MaintenanceLog } from '@rental/shared';
-import { api } from '../../api/client';
+import { api, assetUrl } from '../../api/client';
 
 export function FleetDetail() {
   const { id } = useParams();
@@ -104,7 +104,7 @@ export function FleetDetail() {
         ) : (
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
             {vehicle.photos.map((p, i) => (
-              <img key={i} src={p} alt="Vehicle" className="aspect-square w-full rounded-lg object-cover" />
+              <img key={i} src={assetUrl(p)} alt="Vehicle" className="aspect-square w-full rounded-lg object-cover" />
             ))}
           </div>
         )}

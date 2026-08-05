@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button, BookingStepper, Card, CardHeader, CardTitle, EmptyState, Spinner, StatusBadge } from '@rental/shared';
 import type { Booking, DocumentRecord, ConditionReport, Contract, Deposit, BookingStatus } from '@rental/shared';
-import { api, ApiError } from '../../api/client';
+import { api, ApiError, assetUrl } from '../../api/client';
 
 interface BookingDetailResponse extends Booking {
   documents: DocumentRecord[];
@@ -122,7 +122,7 @@ export function BookingDetail() {
                 <li key={d.id} className="flex items-center justify-between rounded-lg bg-neutral-50 p-3 text-sm">
                   <div>
                     <p className="font-medium text-neutral-800">{d.document_type.replace('_', ' ')}</p>
-                    <a href={d.file_path} target="_blank" rel="noreferrer" className="text-xs text-primary-600 hover:underline">
+                    <a href={assetUrl(d.file_path)} target="_blank" rel="noreferrer" className="text-xs text-primary-600 hover:underline">
                       View file
                     </a>
                   </div>
@@ -148,7 +148,7 @@ export function BookingDetail() {
             <ul className="space-y-3">
               {booking.contracts.map((c) => (
                 <li key={c.id} className="flex items-center justify-between rounded-lg bg-neutral-50 p-3 text-sm">
-                  <a href={c.pdf_file_path} target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">
+                  <a href={assetUrl(c.pdf_file_path)} target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">
                     Download Contract PDF
                   </a>
                   <StatusBadge status={c.signed ? 'confirmed' : 'pending_documents'} />

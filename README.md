@@ -6,6 +6,9 @@ three. Deposits and payments are recorded manually by staff — there is no
 mobile money or WhatsApp integration in this build, and no live currency
 exchange rate API (the rate is a manually editable admin setting).
 
+For deploying to Vercel, see **[DEPLOYMENT.md](DEPLOYMENT.md)**. The sections
+below cover running everything locally.
+
 ## Structure
 
 ```

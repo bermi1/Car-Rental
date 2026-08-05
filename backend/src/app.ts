@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env';
+import { query } from './config/db';
 import { uploadsRoot } from './services/storage';
 
 import authRoutes from './routes/auth.routes';
@@ -24,6 +25,17 @@ app.use(express.json());
 app.use('/uploads', express.static(uploadsRoot));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Reports database reachability too, so a misconfigured DATABASE_URL shows up
+// here rather than as a failure on every individual endpoint.
+app.get('/api/health', async (_req, res) => {
+  try {
+    await query('select 1');
+    res.json({ ok: true, database: 'connected' });
+  } catch (err: any) {
+    res.status(503).json({ ok: false, database: 'unreachable', error: err.message });
+  }
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, EmptyState, Spinner } from '@rental/shared';
-import { api } from '../../api/client';
+import { api, assetUrl } from '../../api/client';
 
 interface QueueDocument {
   id: string;
@@ -56,8 +56,8 @@ export function DocumentsQueue() {
                   {d.document_type.replace('_', ' ')}
                 </span>
               </div>
-              <a href={d.file_path} target="_blank" rel="noreferrer" className="mb-4 block">
-                <img src={d.file_path} alt="Document" className="h-40 w-full rounded-lg object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              <a href={assetUrl(d.file_path)} target="_blank" rel="noreferrer" className="mb-4 block">
+                <img src={assetUrl(d.file_path)} alt="Document" className="h-40 w-full rounded-lg object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
               </a>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => verify(d.id, true)} isLoading={busyId === d.id}>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, EmptyState, Spinner, StatusBadge } from '@rental/shared';
 import type { Client, Booking, ClientDevice } from '@rental/shared';
-import { api } from '../../api/client';
+import { api, assetUrl } from '../../api/client';
 
 interface ClientProfile extends Client {
   bookings: (Booking & { make: string; model: string; plate_number: string })[];
@@ -47,7 +47,7 @@ export function ClientDetail() {
           <div>
             <p className="text-neutral-400">ID Document</p>
             {client.id_document_file ? (
-              <a href={client.id_document_file} target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">
+              <a href={assetUrl(client.id_document_file)} target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">
                 View
               </a>
             ) : (
@@ -57,7 +57,7 @@ export function ClientDetail() {
           <div>
             <p className="text-neutral-400">Driving License</p>
             {client.driving_license_file ? (
-              <a href={client.driving_license_file} target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">
+              <a href={assetUrl(client.driving_license_file)} target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">
                 View
               </a>
             ) : (
