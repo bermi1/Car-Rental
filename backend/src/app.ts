@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import { env } from './config/env';
+import { uploadsRoot } from './services/storage';
 
 import authRoutes from './routes/auth.routes';
 import vehicleRoutes from './routes/vehicles.routes';
@@ -21,7 +21,7 @@ const app = express();
 
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
-app.use('/uploads', express.static(path.resolve(process.cwd(), env.uploadsDir)));
+app.use('/uploads', express.static(uploadsRoot));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
