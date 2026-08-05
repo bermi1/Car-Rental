@@ -1,0 +1,17 @@
+{
+  "name": "car-rental-platform",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "web-admin",
+    "web-staff"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=backend",
+    "dev:admin": "npm run dev --workspace=web-admin",
+    "dev:staff": "npm run dev --workspace=web-staff",
+    "seed": "npm run seed --workspace=backend"
+  }
+}
