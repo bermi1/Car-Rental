@@ -18,10 +18,31 @@ router.post('/staff/login', async (req, res) => {
   const ok = await comparePassword(password, staff.password_hash);
   if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-  const token = signToken({ sub: staff.id, role: staff.role, name: staff.name, email: staff.email });
+  // The company rides in the token so every later request resolves its tenant
+  // without another lookup. A super admin has none — they pick per request.
+  const token = signToken({
+    sub: staff.id,
+    role: staff.role,
+    name: staff.name,
+    email: staff.email,
+    companyId: staff.company_id,
+  });
+
+  const company = staff.company_id
+    ? (await query('SELECT id, name, slug FROM companies WHERE id = $1', [staff.company_id])).rows[0]
+    : null;
+
   res.json({
     token,
-    user: { id: staff.id, name: staff.name, email: staff.email, role: staff.role },
+    user: {
+      id: staff.id,
+      name: staff.name,
+      email: staff.email,
+      role: staff.role,
+      company_id: staff.company_id,
+      language: staff.language,
+    },
+    company,
   });
 });
 
@@ -91,7 +112,34 @@ router.get('/me', requireAuth, async (req: AuthedRequest, res) => {
   const { rows } = await query('SELECT * FROM staff_users WHERE id = $1', [sub]);
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   const staff = rows[0];
-  res.json({ role, user: { id: staff.id, name: staff.name, email: staff.email, role: staff.role } });
+
+  const company = staff.company_id
+    ? (await query('SELECT id, name, slug FROM companies WHERE id = $1', [staff.company_id])).rows[0]
+    : null;
+
+  res.json({
+    role,
+    user: {
+      id: staff.id,
+      name: staff.name,
+      email: staff.email,
+      role: staff.role,
+      company_id: staff.company_id,
+      language: staff.language,
+    },
+    company,
+  });
+});
+
+// ---------- Language preference ----------
+router.put('/me/language', requireAuth, async (req: AuthedRequest, res) => {
+  const { language } = req.body;
+  if (language !== 'en' && language !== 'sw') {
+    return res.status(400).json({ error: "language must be 'en' or 'sw'" });
+  }
+  const table = req.user!.role === 'client' ? 'clients' : 'staff_users';
+  await query(`UPDATE ${table} SET language = $1 WHERE id = $2`, [language, req.user!.sub]);
+  res.json({ language });
 });
 
 function sanitizeClient(c: any) {

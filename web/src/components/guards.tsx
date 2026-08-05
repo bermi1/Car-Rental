@@ -33,3 +33,18 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
   }
   return <>{children}</>;
 }
+
+/** Wraps routes that manage the platform itself, above any one company. */
+export function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
+  const { isSuperAdmin } = useAuth();
+  if (!isSuperAdmin) {
+    return (
+      <EmptyState
+        icon="shield"
+        title="Platform access required"
+        description="Managing companies is limited to the platform operator."
+      />
+    );
+  }
+  return <>{children}</>;
+}

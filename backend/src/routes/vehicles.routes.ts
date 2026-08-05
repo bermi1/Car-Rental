@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { query } from '../config/db';
-import { requireAuth, requireRole, requireStaffOrAdmin, AuthedRequest } from '../middleware/auth';
+import {
+  requireAuth,
+  requireCompanyAdmin,
+  requireStaffOrAdmin,
+  requireCompany,
+  resolveCompany,
+  AuthedRequest,
+} from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { storage } from '../services/storage';
 import { logActivity } from '../services/activityLog';
@@ -8,10 +15,18 @@ import { logActivity } from '../services/activityLog';
 const router = Router();
 
 // List (any authenticated user; clients use this to browse available vehicles)
-router.get('/', requireAuth, async (req, res) => {
-  const { status, category, start_date, end_date } = req.query as Record<string, string>;
+router.get('/', requireAuth, resolveCompany, async (req: AuthedRequest, res) => {
+  const { status, category, start_date, end_date, company_id } = req.query as Record<string, string>;
   const conditions: string[] = [];
   const params: any[] = [];
+
+  // Internal users only ever see their own company's fleet. Clients browse
+  // across companies — that's the marketplace — and may filter to one.
+  const tenant = req.user!.role === 'client' ? company_id : req.companyId;
+  if (tenant) {
+    params.push(tenant);
+    conditions.push(`v.company_id = $${params.length}`);
+  }
 
   if (status) {
     params.push(status);
@@ -46,15 +61,15 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post('/', requireAuth, requireRole('admin'), async (req: AuthedRequest, res) => {
+router.post('/', requireAuth, requireCompanyAdmin, requireCompany, async (req: AuthedRequest, res) => {
   const { make, model, plate_number, category, current_mileage, daily_rate_tzs } = req.body;
   if (!make || !model || !plate_number || !category) {
     return res.status(400).json({ error: 'make, model, plate_number, category are required' });
   }
   const { rows } = await query(
-    `INSERT INTO vehicles (make, model, plate_number, category, current_mileage, daily_rate_tzs)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [make, model, plate_number, category, current_mileage || 0, daily_rate_tzs || 0]
+    `INSERT INTO vehicles (company_id, make, model, plate_number, category, current_mileage, daily_rate_tzs)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [req.companyId, make, model, plate_number, category, current_mileage || 0, daily_rate_tzs || 0]
   );
   await logActivity({
     actorStaffId: req.user!.sub,
@@ -66,7 +81,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req: AuthedRequest, r
   res.status(201).json(rows[0]);
 });
 
-router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.put('/:id', requireAuth, requireCompanyAdmin, async (req, res) => {
   const fields = ['make', 'model', 'plate_number', 'category', 'status', 'current_mileage', 'daily_rate_tzs'];
   const updates: string[] = [];
   const params: any[] = [];
@@ -86,7 +101,7 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   res.json(rows[0]);
 });
 
-router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.delete('/:id', requireAuth, requireCompanyAdmin, async (req, res) => {
   await query('DELETE FROM vehicles WHERE id = $1', [req.params.id]);
   res.status(204).send();
 });

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { cn, Icon, IconButton, initials } from '@rental/shared';
-import { useAuth } from '../context/AuthContext';
+import { cn, Icon, IconButton, initials, Select } from '@rental/shared';
+import { useAuth, type Company } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 import { visibleSections } from '../navigation';
+import { api } from '../api/client';
 
 function Brand() {
   return (
@@ -19,9 +21,51 @@ function Brand() {
   );
 }
 
+/** Lets a super admin choose which tenant they're working inside. */
+function CompanySwitcher() {
+  const { isSuperAdmin, company, switchCompany } = useAuth();
+  const { t } = useI18n();
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    api.get<Company[]>('/companies').then(setCompanies).catch(() => setCompanies([]));
+  }, [isSuperAdmin]);
+
+  if (!isSuperAdmin) {
+    return company ? (
+      <div className="px-4 pb-3">
+        <p className="text-[11px] uppercase tracking-wider text-fg-subtle">{t('common.company')}</p>
+        <p className="truncate text-[13px] font-medium text-fg">{company.name}</p>
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="px-3 pb-3">
+      <Select
+        label={t('companies.switcher')}
+        value={company?.id ?? ''}
+        onChange={(e) => {
+          const next = companies.find((c) => c.id === e.target.value) ?? null;
+          switchCompany(next);
+        }}
+      >
+        <option value="">{t('companies.allCompanies')}</option>
+        {companies.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, logout, isAdmin } = useAuth();
-  const sections = visibleSections(isAdmin);
+  const { user, logout, isAdmin, isSuperAdmin } = useAuth();
+  const { t } = useI18n();
+  const sections = visibleSections({ isAdmin, isSuperAdmin });
 
   return (
     <div className="flex h-full flex-col">
@@ -29,11 +73,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Brand />
       </div>
 
+      <CompanySwitcher />
+
       <nav className="scrollbar-slim flex-1 overflow-y-auto px-3 pb-4">
         {sections.map((section) => (
-          <div key={section.title} className="mb-5">
+          <div key={section.titleKey} className="mb-5">
             <p className="mb-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
-              {section.title}
+              {t(section.titleKey)}
             </p>
             <ul className="space-y-0.5">
               {section.items.map((item) => (
@@ -58,7 +104,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                           size={17}
                           className={cn('shrink-0', isActive ? 'text-accent' : 'text-fg-subtle')}
                         />
-                        <span className="truncate">{item.label}</span>
+                        <span className="truncate">{t(item.labelKey)}</span>
                       </>
                     )}
                   </NavLink>
@@ -76,11 +122,35 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-medium text-fg">{user?.name}</p>
-            <p className="truncate text-[11px] capitalize text-fg-subtle">{user?.role}</p>
+            <p className="truncate text-[11px] capitalize text-fg-subtle">
+              {String(user?.role ?? '').replace('_', ' ')}
+            </p>
           </div>
-          <IconButton icon="logout" label="Log out" size="sm" onClick={logout} />
+          <IconButton icon="logout" label={t('common.signOut')} size="sm" onClick={logout} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** English / Kiswahili toggle. */
+function LanguageToggle() {
+  const { language, setLanguage } = useI18n();
+  return (
+    <div className="flex items-center rounded-lg bg-surface-sunken p-0.5">
+      {(['en', 'sw'] as const).map((code) => (
+        <button
+          key={code}
+          onClick={() => setLanguage(code)}
+          aria-label={code === 'en' ? 'English' : 'Kiswahili'}
+          className={cn(
+            'rounded-md px-2 py-1 text-[11px] font-semibold uppercase transition-all',
+            language === code ? 'bg-surface text-fg shadow-xs' : 'text-fg-subtle hover:text-fg'
+          )}
+        >
+          {code}
+        </button>
+      ))}
     </div>
   );
 }
@@ -90,17 +160,14 @@ export function Shell() {
   const { theme, toggle } = useTheme();
   const location = useLocation();
 
-  // A route change should always dismiss the mobile drawer.
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-line bg-surface lg:block">
         <SidebarContent />
       </aside>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 animate-fade-in bg-black/40" onClick={() => setMobileOpen(false)} />
@@ -117,12 +184,15 @@ export function Shell() {
             <Brand />
           </div>
           <div className="hidden lg:block" />
-          <IconButton
-            icon={theme === 'dark' ? 'sun' : 'moon'}
-            label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            size="sm"
-            onClick={toggle}
-          />
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <IconButton
+              icon={theme === 'dark' ? 'sun' : 'moon'}
+              label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              size="sm"
+              onClick={toggle}
+            />
+          </div>
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

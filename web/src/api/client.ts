@@ -5,9 +5,23 @@
  */
 
 const TOKEN_KEY = 'rental_token';
+const COMPANY_KEY = 'rental_active_company';
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
+}
+
+/**
+ * The tenant a super admin is currently acting inside. Sent as X-Company-Id on
+ * every request; ordinary staff ignore it entirely — the server takes their
+ * company from the token, so this header can never widen anyone's access.
+ */
+export function getActiveCompany(): string | null {
+  return localStorage.getItem(COMPANY_KEY);
+}
+export function setActiveCompany(id: string | null) {
+  if (id) localStorage.setItem(COMPANY_KEY, id);
+  else localStorage.removeItem(COMPANY_KEY);
 }
 export function setToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
@@ -35,6 +49,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
   if (token) headers.Authorization = `Bearer ${token}`;
+  const activeCompany = getActiveCompany();
+  if (activeCompany) headers['X-Company-Id'] = activeCompany;
   if (options.body && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }

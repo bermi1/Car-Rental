@@ -142,3 +142,94 @@ recording a condition report on the Check-In / Out screen advances the booking.
 Quotes are base daily rate × days, with any active seasonal pricing multiplier
 applied, converted to the requested currency at the admin-set exchange rate,
 and always staff-editable via an override before the booking is saved.
+
+---
+
+## Platform features (v2)
+
+### Multi-tenant
+
+A **super admin** registers rental companies; each company owns its own fleet,
+staff, bookings, settings and payment details. Tenant isolation is enforced at a
+single choke point (`backend/src/middleware/auth.ts` → `resolveCompany`): route
+handlers read `req.companyId` and never trust a company id from the request
+body, so one company's staff cannot reach another's rows by guessing an id.
+
+A super admin picks which tenant to act inside via the company switcher; that
+choice rides as an `X-Company-Id` header. Ordinary staff send it too and the
+server ignores it — their company comes from their token, so the header can
+never widen anyone's access.
+
+### Handover with video
+
+Check-in and check-out capture a short walkaround video plus stills, stored
+against the condition report. That footage is what a later damage claim is
+argued from, so both ends of the rental are evidenced.
+
+### Damages and penalties
+
+Staff itemise damage found at return and set the penalty. With
+`ANTHROPIC_API_KEY` configured, they can instead describe what they found in
+plain language and have Claude draft the itemisation and suggested amounts
+against the company's own penalty rates — saved items are flagged `ai_assisted`
+so a reviewer can tell.
+
+### Payments — recorded, evidenced, confirmed
+
+There is **no payment gateway**. A payment is recorded with its method and
+reference, the payer attaches a receipt (client from the app, or staff at the
+desk), and staff confirm or reject it. `GET /api/payments/booking/:id/balance`
+returns quoted + penalties − confirmed payments.
+
+### Location sharing
+
+While a rental is active, the client's phone reports position on a timer after
+granting permission. Sharing is per booking and pings are rejected outside the
+active window, so a phone never reports outside the period the client agreed
+to. Staff see last-known positions on **Live Tracking**, and the full trail when
+a vehicle needs finding.
+
+### Kiswahili
+
+The console ships English and Kiswahili, toggled in the header and persisted to
+the account so the choice follows the user to another device.
+
+### AI assistance
+
+Optional throughout — set `ANTHROPIC_API_KEY` to enable, and everything works
+without it:
+
+- **Assistant** — ask about fleet, bookings, payments and penalties in plain
+  language (English or Kiswahili). This is what replaces filtering a
+  spreadsheet. The snapshot is assembled server-side from the asking company's
+  own aggregates, so a question can't reach another tenant's data.
+- **Damage drafting** — rough notes to itemised damage with suggested penalties.
+- **Handover summaries** — condition-report fields to a paragraph fit for the
+  contract.
+
+### Seeded accounts (v2)
+
+| Role | Email | Password |
+|---|---|---|
+| Super admin | `owner@rentalplatform.co.tz` | `Super123!` |
+| Admin — Serengeti Car Hire | `admin@rental.co.tz` | `Admin123!` |
+| Staff — Serengeti Car Hire | `staff@rental.co.tz` | `Staff123!` |
+| Admin — Kilimanjaro Rentals | `admin@kilirentals.co.tz` | `Admin123!` |
+| Clients | `grace.mushi@example.com` and two others | `Client123!` |
+
+Sign in as each company's admin to see the isolation: Serengeti has 5 vehicles
+and 6 bookings, Kilimanjaro has 2 and 0.
+
+## Known gaps in this increment
+
+- **Kiswahili covers the navigation, shell and the new screens** (Payments,
+  Damages, Tracking, Assistant, Companies). The older screens — Overview,
+  Bookings, Fleet, Clients, Documents, Deposits, Reports, Staff — still render
+  English body copy. The catalogue and `useT()` hook are in place; those pages
+  need their strings swapped for keys.
+- **The mobile app has not been updated for the v2 flows.** The API endpoints
+  for client-side booking, document upload, receipt upload and location pings
+  exist and are exercised, but `mobile/` still targets the v1 API.
+- **Recording a payment from the console** isn't wired to a button yet; staff
+  confirm and reject from the Payments screen, and `POST /api/payments` accepts
+  a receipt upload from either side.

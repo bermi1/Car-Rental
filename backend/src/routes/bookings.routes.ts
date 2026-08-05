@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../config/db';
-import { requireAuth, requireStaffOrAdmin, AuthedRequest } from '../middleware/auth';
+import { requireAuth, requireStaffOrAdmin, resolveCompany, AuthedRequest } from '../middleware/auth';
 import { calculateQuote } from '../utils/pricing';
 import { logActivity } from '../services/activityLog';
 import { canConfirmBooking, maybeAdvanceToDocumentsSubmitted } from '../services/bookingWorkflow';
@@ -17,10 +17,16 @@ const BOOKING_SELECT = `
 `;
 
 // List bookings with filters
-router.get('/', requireAuth, async (req: AuthedRequest, res) => {
+router.get('/', requireAuth, resolveCompany, async (req: AuthedRequest, res) => {
   const { status, vehicle_id, client_id, from, to } = req.query as Record<string, string>;
   const conditions: string[] = [];
   const params: any[] = [];
+
+  // Internal callers are confined to their own tenant.
+  if (req.companyId) {
+    params.push(req.companyId);
+    conditions.push(`b.company_id = $${params.length}`);
+  }
 
   if (req.user!.role === 'client') {
     params.push(req.user!.sub);
@@ -93,18 +99,21 @@ router.post('/quote', requireAuth, async (req, res) => {
   if (!vehicle_id || !start_date || !end_date) {
     return res.status(400).json({ error: 'vehicle_id, start_date, end_date are required' });
   }
-  const [{ rows: vRows }, { rows: sRows }] = await Promise.all([
-    query('SELECT * FROM vehicles WHERE id = $1', [vehicle_id]),
-    query('SELECT * FROM system_settings WHERE id = 1'),
-  ]);
+  // Pricing follows the vehicle's owning company — its exchange rate and its
+  // seasonal windows — so a quote is correct whichever company is being booked.
+  const { rows: vRows } = await query('SELECT * FROM vehicles WHERE id = $1', [vehicle_id]);
   if (!vRows[0]) return res.status(404).json({ error: 'Vehicle not found' });
-  const settings = sRows[0];
+  const companyId = vRows[0].company_id;
+
+  const { rows: sRows } = await query('SELECT * FROM company_settings WHERE company_id = $1', [companyId]);
+  const settings = sRows[0] ?? { usd_to_tzs_rate: 2600 };
 
   const seasonal = await query(
     `SELECT rate_multiplier FROM seasonal_pricing
-     WHERE (category IS NULL OR category = $1) AND start_date <= $3 AND end_date >= $2
+     WHERE company_id = $4 AND (category IS NULL OR category = $1)
+       AND start_date <= $3 AND end_date >= $2
      ORDER BY rate_multiplier DESC LIMIT 1`,
-    [vRows[0].category, start_date, end_date]
+    [vRows[0].category, start_date, end_date, companyId]
   );
 
   const { days, amount } = calculateQuote({
@@ -135,15 +144,27 @@ router.post('/', requireAuth, async (req: AuthedRequest, res) => {
 
   const is_cross_region = pickup_region.trim().toLowerCase() !== dropoff_region.trim().toLowerCase();
 
+  // The booking belongs to whichever company owns the vehicle — never to a
+  // company id supplied by the caller.
+  const { rows: vehicleRows } = await query('SELECT company_id FROM vehicles WHERE id = $1', [vehicle_id]);
+  if (!vehicleRows[0]) return res.status(404).json({ error: 'Vehicle not found' });
+  const companyId = vehicleRows[0].company_id;
+
+  if (isStaff && req.user!.role !== 'super_admin' && companyId !== req.user!.companyId) {
+    return res.status(403).json({ error: 'That vehicle belongs to another company' });
+  }
+
   const { rows } = await query(
     `INSERT INTO bookings
-      (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region,
-       is_cross_region, quoted_currency, quoted_amount, created_by_staff_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region,
+       is_cross_region, quoted_currency, quoted_amount, created_by_staff_id, created_by_client_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
     [
-      vehicle_id, resolvedClientId, rental_type || 'self_drive', start_date, end_date,
+      companyId, vehicle_id, resolvedClientId, rental_type || 'self_drive', start_date, end_date,
       pickup_region, dropoff_region, is_cross_region,
-      quoted_currency || 'TZS', quoted_amount || 0, isStaff ? req.user!.sub : null,
+      quoted_currency || 'TZS', quoted_amount || 0,
+      isStaff ? req.user!.sub : null,
+      isStaff ? null : req.user!.sub,
     ]
   );
 
@@ -154,15 +175,16 @@ router.post('/', requireAuth, async (req: AuthedRequest, res) => {
   // booking isn't stuck at pending_documents waiting for a re-upload event.
   await maybeAdvanceToDocumentsSubmitted(rows[0].id);
 
-  if (isStaff) {
-    await logActivity({
-      actorStaffId: req.user!.sub,
-      action: 'booking_created',
-      entityType: 'booking',
-      entityId: rows[0].id,
-      description: `Created booking for client ${resolvedClientId}`,
-    });
-  }
+  await logActivity({
+    actorStaffId: isStaff ? req.user!.sub : null,
+    companyId,
+    action: 'booking_created',
+    entityType: 'booking',
+    entityId: rows[0].id,
+    description: isStaff
+      ? `Created a booking on behalf of a client`
+      : `Client requested a booking from the app`,
+  });
 
   const { rows: finalRows } = await query('SELECT * FROM bookings WHERE id = $1', [rows[0].id]);
   res.status(201).json(finalRows[0]);

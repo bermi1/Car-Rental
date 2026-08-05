@@ -4,28 +4,53 @@ import { hashPassword } from '../utils/password';
 async function seed() {
   const client = await pool.connect();
   try {
+    console.log('Seeding companies...');
+    // Two tenants so the isolation is visible: sign in as either company's
+    // admin and you see only that company's fleet and bookings.
+    const { rows: companies } = await client.query(
+      `INSERT INTO companies (name, slug, region, contact_email, contact_phone) VALUES
+        ('Serengeti Car Hire', 'serengeti-car-hire', 'Dar es Salaam', 'info@serengetihire.co.tz', '+255712000100'),
+        ('Kilimanjaro Rentals', 'kilimanjaro-rentals', 'Arusha', 'info@kilirentals.co.tz', '+255712000200')
+       RETURNING id, slug`
+    );
+    const serengeti = companies.find((c) => c.slug === 'serengeti-car-hire');
+    const kilimanjaro = companies.find((c) => c.slug === 'kilimanjaro-rentals');
+
+    await client.query(
+      `INSERT INTO company_settings (company_id, usd_to_tzs_rate, default_daily_rate_tzs, payment_instructions)
+       VALUES ($1, 2650, 100000, 'M-Pesa Lipa Namba 123456 (Serengeti Car Hire), or CRDB 0150123456789. Send the receipt through the app.'),
+              ($2, 2650, 110000, 'Airtel Money 555777 (Kilimanjaro Rentals), or NMB 20110012345. Upload the receipt in the app.')`,
+      [serengeti.id, kilimanjaro.id]
+    );
+
     console.log('Seeding staff users...');
     const adminPass = await hashPassword('Admin123!');
     const staffPass = await hashPassword('Staff123!');
+    const superPass = await hashPassword('Super123!');
     const { rows: staffRows } = await client.query(
-      `INSERT INTO staff_users (name, email, password_hash, role) VALUES
-        ('Amina Kessy', 'admin@rental.co.tz', $1, 'admin'),
-        ('John Mwakalinga', 'staff@rental.co.tz', $2, 'staff')
-       RETURNING id, name, role`,
-      [adminPass, staffPass]
+      `INSERT INTO staff_users (name, email, password_hash, role, company_id) VALUES
+        ('Neema Shirima', 'owner@rentalplatform.co.tz', $3, 'super_admin', NULL),
+        ('Amina Kessy', 'admin@rental.co.tz', $1, 'admin', $4),
+        ('John Mwakalinga', 'staff@rental.co.tz', $2, 'staff', $4),
+        ('Joseph Mollel', 'admin@kilirentals.co.tz', $1, 'admin', $5)
+       RETURNING id, name, role, company_id`,
+      [adminPass, staffPass, superPass, serengeti.id, kilimanjaro.id]
     );
-    const admin = staffRows.find((s) => s.role === 'admin');
+    const admin = staffRows.find((s) => s.role === 'admin' && s.company_id === serengeti.id);
     const staffMember = staffRows.find((s) => s.role === 'staff');
 
     console.log('Seeding vehicles...');
     const { rows: vehicles } = await client.query(
-      `INSERT INTO vehicles (make, model, plate_number, category, status, current_mileage, daily_rate_tzs, photos) VALUES
-        ('Toyota', 'Land Cruiser Prado', 'T123ABC', 'SUV', 'available', 42000, 180000, '{}'),
-        ('Toyota', 'Corolla', 'T456DEF', 'Sedan', 'available', 30500, 90000, '{}'),
-        ('Toyota', 'Hiace', 'T789GHI', 'Van', 'booked', 61000, 150000, '{}'),
-        ('Nissan', 'X-Trail', 'T321JKL', 'SUV', 'in_service', 55000, 140000, '{}'),
-        ('Suzuki', 'Alto', 'T654MNO', 'Economy', 'available', 18000, 60000, '{}')
-       RETURNING id, category, plate_number`
+      `INSERT INTO vehicles (company_id, make, model, plate_number, category, status, current_mileage, daily_rate_tzs, photos) VALUES
+        ($1, 'Toyota', 'Land Cruiser Prado', 'T123ABC', 'SUV', 'available', 42000, 180000, '{}'),
+        ($1, 'Toyota', 'Corolla', 'T456DEF', 'Sedan', 'available', 30500, 90000, '{}'),
+        ($1, 'Toyota', 'Hiace', 'T789GHI', 'Van', 'booked', 61000, 150000, '{}'),
+        ($1, 'Nissan', 'X-Trail', 'T321JKL', 'SUV', 'in_service', 55000, 140000, '{}'),
+        ($1, 'Suzuki', 'Alto', 'T654MNO', 'Economy', 'available', 18000, 60000, '{}'),
+        ($2, 'Toyota', 'RAV4', 'T900KIL', 'SUV', 'available', 24000, 160000, '{}'),
+        ($2, 'Toyota', 'Noah', 'T901KIL', 'Van', 'available', 71000, 120000, '{}')
+       RETURNING id, category, plate_number`,
+      [serengeti.id, kilimanjaro.id]
     );
 
     console.log('Seeding clients...');
@@ -40,7 +65,7 @@ async function seed() {
     );
 
     console.log('Seeding system settings...');
-    await client.query('UPDATE system_settings SET usd_to_tzs_rate = 2650, default_daily_rate_tzs = 100000 WHERE id = 1');
+    // Company settings were seeded above, one row per tenant.
 
     console.log('Seeding a linked device for one client...');
     await client.query(
@@ -59,16 +84,16 @@ async function seed() {
 
     // 1. pending_documents — client requested, no docs yet
     const b1 = await client.query(
-      `INSERT INTO bookings (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status)
-       VALUES ($1,$2,'self_drive', CURRENT_DATE + 5, CURRENT_DATE + 8, 'Dar es Salaam', 'Dar es Salaam', false, 'TZS', 270000, 'pending_documents')
+      `INSERT INTO bookings (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status)
+       VALUES ((SELECT company_id FROM vehicles WHERE id = $1),$1,$2,'self_drive', CURRENT_DATE + 5, CURRENT_DATE + 8, 'Dar es Salaam', 'Dar es Salaam', false, 'TZS', 270000, 'pending_documents')
        RETURNING id`,
       [alto.id, clients[1].id]
     );
 
     // 2. documents_submitted — docs uploaded, awaiting verification
     const b2 = await client.query(
-      `INSERT INTO bookings (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
-       VALUES ($1,$2,'driver_included', CURRENT_DATE + 2, CURRENT_DATE + 6, 'Arusha', 'Moshi', true, 'USD', 320, 'documents_submitted', $3)
+      `INSERT INTO bookings (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
+       VALUES ((SELECT company_id FROM vehicles WHERE id = $1),$1,$2,'driver_included', CURRENT_DATE + 2, CURRENT_DATE + 6, 'Arusha', 'Moshi', true, 'USD', 320, 'documents_submitted', $3)
        RETURNING id`,
       [xtrail.id, clients[2].id, staffMember.id]
     );
@@ -81,8 +106,8 @@ async function seed() {
 
     // 3. confirmed — verified docs, contract generated, not yet checked in
     const b3 = await client.query(
-      `INSERT INTO bookings (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
-       VALUES ($1,$2,'self_drive', CURRENT_DATE + 1, CURRENT_DATE + 4, 'Dar es Salaam', 'Dar es Salaam', false, 'TZS', 270000, 'confirmed', $3)
+      `INSERT INTO bookings (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
+       VALUES ((SELECT company_id FROM vehicles WHERE id = $1),$1,$2,'self_drive', CURRENT_DATE + 1, CURRENT_DATE + 4, 'Dar es Salaam', 'Dar es Salaam', false, 'TZS', 270000, 'confirmed', $3)
        RETURNING id`,
       [corolla.id, clients[0].id, staffMember.id]
     );
@@ -99,8 +124,8 @@ async function seed() {
 
     // 4. active — currently out with client, check-in recorded, deposit held
     const b4 = await client.query(
-      `INSERT INTO bookings (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
-       VALUES ($1,$2,'self_drive', CURRENT_DATE - 1, CURRENT_DATE + 2, 'Dar es Salaam', 'Zanzibar', true, 'TZS', 540000, 'active', $3)
+      `INSERT INTO bookings (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
+       VALUES ((SELECT company_id FROM vehicles WHERE id = $1),$1,$2,'self_drive', CURRENT_DATE - 1, CURRENT_DATE + 2, 'Dar es Salaam', 'Zanzibar', true, 'TZS', 540000, 'active', $3)
        RETURNING id`,
       [hiace.id, clients[1].id, staffMember.id]
     );
@@ -122,8 +147,8 @@ async function seed() {
 
     // 5. completed — full lifecycle including check-out and deposit release
     const b5 = await client.query(
-      `INSERT INTO bookings (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
-       VALUES ($1,$2,'self_drive', CURRENT_DATE - 10, CURRENT_DATE - 7, 'Dar es Salaam', 'Dar es Salaam', false, 'TZS', 540000, 'completed', $3)
+      `INSERT INTO bookings (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
+       VALUES ((SELECT company_id FROM vehicles WHERE id = $1),$1,$2,'self_drive', CURRENT_DATE - 10, CURRENT_DATE - 7, 'Dar es Salaam', 'Dar es Salaam', false, 'TZS', 540000, 'completed', $3)
        RETURNING id`,
       [prado.id, clients[2].id, admin.id]
     );
@@ -150,8 +175,8 @@ async function seed() {
 
     // 6. cancelled
     await client.query(
-      `INSERT INTO bookings (vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
-       VALUES ($1,$2,'self_drive', CURRENT_DATE + 15, CURRENT_DATE + 18, 'Mwanza', 'Mwanza', false, 'TZS', 270000, 'cancelled', $3)`,
+      `INSERT INTO bookings (company_id, vehicle_id, client_id, rental_type, start_date, end_date, pickup_region, dropoff_region, is_cross_region, quoted_currency, quoted_amount, status, created_by_staff_id)
+       VALUES ((SELECT company_id FROM vehicles WHERE id = $1),$1,$2,'self_drive', CURRENT_DATE + 15, CURRENT_DATE + 18, 'Mwanza', 'Mwanza', false, 'TZS', 270000, 'cancelled', $3)`,
       [corolla.id, clients[1].id, staffMember.id]
     );
 

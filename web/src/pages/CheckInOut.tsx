@@ -38,6 +38,7 @@ export function CheckInOut() {
   const [mileage, setMileage] = useState('');
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<FileList | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -71,6 +72,7 @@ export function CheckInOut() {
       form.append('mileage', mileage);
       form.append('notes', notes);
       if (photos) Array.from(photos).forEach((f) => form.append('photos', f));
+      if (video) form.append('video', video);
 
       await api.post('/condition-reports', form);
       await api.post(`/bookings/${selected.id}/${type === 'check_in' ? 'activate' : 'complete'}`);
@@ -83,6 +85,7 @@ export function CheckInOut() {
       setMileage('');
       setNotes('');
       setPhotos(null);
+      setVideo(null);
       setSelectedId('');
       setSearchParams({});
       setBookings(await loadActionable());
@@ -197,6 +200,26 @@ export function CheckInOut() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+
+              {/* A short walkaround clip is the strongest evidence of condition —
+                  it's what a later damage claim is argued from. */}
+              <div>
+                <span className="mb-1.5 block text-[13px] font-medium text-fg">Walkaround video</span>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line-strong px-3.5 py-3 text-[13px] text-fg-muted transition-colors hover:border-accent hover:text-fg">
+                  <Icon name="upload" size={16} />
+                  {video ? video.name : 'Record or choose a video'}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    capture="environment"
+                    hidden
+                    onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <p className="mt-1.5 text-xs text-fg-subtle">
+                  A short clip around the vehicle is the strongest evidence of its condition.
+                </p>
+              </div>
 
               <div>
                 <span className="mb-1.5 block text-[13px] font-medium text-fg">Photos</span>

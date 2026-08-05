@@ -1,16 +1,19 @@
 import type { IconName } from '@rental/shared';
+import type { TranslationKey } from './i18n';
 
 export interface NavItem {
   to: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: IconName;
   end?: boolean;
-  /** Admin-only entries are hidden from staff and their routes are blocked. */
+  /** Hidden from staff, and its route is blocked. */
   adminOnly?: boolean;
+  /** Platform operator only — managing the companies themselves. */
+  superAdminOnly?: boolean;
 }
 
 export interface NavSection {
-  title: string;
+  titleKey: TranslationKey;
   items: NavItem[];
 }
 
@@ -20,39 +23,48 @@ export interface NavSection {
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'Operations',
+    titleKey: 'nav.operations',
     items: [
-      { to: '/', label: 'Overview', icon: 'dashboard', end: true },
-      { to: '/bookings', label: 'Bookings', icon: 'calendar' },
-      { to: '/check-in-out', label: 'Check-In / Out', icon: 'clipboard' },
-      { to: '/documents', label: 'Documents', icon: 'shield' },
-      { to: '/deposits', label: 'Deposits', icon: 'wallet' },
+      { to: '/', labelKey: 'nav.overview', icon: 'dashboard', end: true },
+      { to: '/bookings', labelKey: 'nav.bookings', icon: 'calendar' },
+      { to: '/check-in-out', labelKey: 'nav.checkInOut', icon: 'clipboard' },
+      { to: '/documents', labelKey: 'nav.documents', icon: 'shield' },
+      { to: '/tracking', labelKey: 'nav.tracking', icon: 'activity' },
     ],
   },
   {
-    title: 'Records',
+    titleKey: 'nav.records',
     items: [
-      // Both roles may read fleet and clients (the API allows it, and staff
-      // need client lookup to raise a booking); only admins get write actions,
-      // which the pages gate individually.
-      { to: '/fleet', label: 'Fleet', icon: 'car' },
-      { to: '/clients', label: 'Clients', icon: 'users' },
-      { to: '/my-activity', label: 'My Activity', icon: 'activity' },
+      { to: '/payments', labelKey: 'nav.payments', icon: 'wallet' },
+      { to: '/damages', labelKey: 'nav.damages', icon: 'alert' },
+      { to: '/deposits', labelKey: 'nav.deposits', icon: 'wallet' },
+      { to: '/fleet', labelKey: 'nav.fleet', icon: 'car' },
+      { to: '/clients', labelKey: 'nav.clients', icon: 'users' },
+      { to: '/my-activity', labelKey: 'nav.myActivity', icon: 'clock' },
     ],
   },
   {
-    title: 'Administration',
+    titleKey: 'nav.administration',
     items: [
-      { to: '/reports', label: 'Reports', icon: 'chart', adminOnly: true },
-      { to: '/staff', label: 'Staff', icon: 'shield', adminOnly: true },
-      { to: '/settings', label: 'Settings', icon: 'settings', adminOnly: true },
+      { to: '/assistant', labelKey: 'nav.assistant', icon: 'search' },
+      { to: '/reports', labelKey: 'nav.reports', icon: 'chart', adminOnly: true },
+      { to: '/staff', labelKey: 'nav.staff', icon: 'shield', adminOnly: true },
+      { to: '/settings', labelKey: 'nav.settings', icon: 'settings', adminOnly: true },
     ],
+  },
+  {
+    titleKey: 'nav.platform',
+    items: [{ to: '/companies', labelKey: 'nav.companies', icon: 'external', superAdminOnly: true }],
   },
 ];
 
-export function visibleSections(isAdmin: boolean): NavSection[] {
+export function visibleSections(opts: { isAdmin: boolean; isSuperAdmin: boolean }): NavSection[] {
   return NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => isAdmin || !item.adminOnly),
+    items: section.items.filter((item) => {
+      if (item.superAdminOnly) return opts.isSuperAdmin;
+      if (item.adminOnly) return opts.isAdmin;
+      return true;
+    }),
   })).filter((section) => section.items.length > 0);
 }

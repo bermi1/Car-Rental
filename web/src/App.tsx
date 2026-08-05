@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { RequireAuth, RequireAdmin } from './components/guards';
+import { I18nProvider } from './i18n';
+import { RequireAuth, RequireAdmin, RequireSuperAdmin } from './components/guards';
 import { Shell } from './components/Shell';
 
 import { Login } from './pages/Login';
@@ -21,46 +22,60 @@ import { ClientDetail } from './pages/Clients/ClientDetail';
 import { Reports } from './pages/Reports';
 import { StaffList } from './pages/StaffList';
 import { Settings } from './pages/Settings';
+import { Payments } from './pages/Payments';
+import { Damages } from './pages/Damages';
+import { Tracking } from './pages/Tracking';
+import { Assistant } from './pages/Assistant';
+import { Companies } from './pages/Companies';
 
-/** Admin-only route element. */
 const admin = (element: React.ReactNode) => <RequireAdmin>{element}</RequireAdmin>;
+const platform = (element: React.ReactNode) => <RequireSuperAdmin>{element}</RequireSuperAdmin>;
 
 export function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              element={
-                <RequireAuth>
-                  <Shell />
-                </RequireAuth>
-              }
-            >
-              <Route path="/" element={<Overview />} />
-              <Route path="/bookings" element={<BookingsList />} />
-              <Route path="/bookings/new" element={<BookingCreate />} />
-              <Route path="/bookings/:id" element={<BookingDetail />} />
-              <Route path="/check-in-out" element={<CheckInOut />} />
-              <Route path="/documents" element={<DocumentsQueue />} />
-              <Route path="/deposits" element={<DepositsList />} />
-              <Route path="/my-activity" element={<MyActivity />} />
+      <I18nProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                element={
+                  <RequireAuth>
+                    <Shell />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/" element={<Overview />} />
+                <Route path="/bookings" element={<BookingsList />} />
+                <Route path="/bookings/new" element={<BookingCreate />} />
+                <Route path="/bookings/:id" element={<BookingDetail />} />
+                <Route path="/check-in-out" element={<CheckInOut />} />
+                <Route path="/documents" element={<DocumentsQueue />} />
+                <Route path="/tracking" element={<Tracking />} />
 
-              <Route path="/fleet" element={<FleetList />} />
-              <Route path="/fleet/:id" element={<FleetDetail />} />
-              <Route path="/clients" element={<ClientsList />} />
-              <Route path="/clients/:id" element={<ClientDetail />} />
-              <Route path="/reports" element={admin(<Reports />)} />
-              <Route path="/staff" element={admin(<StaffList />)} />
-              <Route path="/settings" element={admin(<Settings />)} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/damages" element={<Damages />} />
+                <Route path="/deposits" element={<DepositsList />} />
+                <Route path="/fleet" element={<FleetList />} />
+                <Route path="/fleet/:id" element={<FleetDetail />} />
+                <Route path="/clients" element={<ClientsList />} />
+                <Route path="/clients/:id" element={<ClientDetail />} />
+                <Route path="/my-activity" element={<MyActivity />} />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+                <Route path="/assistant" element={<Assistant />} />
+                <Route path="/reports" element={admin(<Reports />)} />
+                <Route path="/staff" element={admin(<StaffList />)} />
+                <Route path="/settings" element={admin(<Settings />)} />
+
+                <Route path="/companies" element={platform(<Companies />)} />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </I18nProvider>
     </ThemeProvider>
   );
 }

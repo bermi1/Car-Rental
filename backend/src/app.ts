@@ -17,6 +17,11 @@ import reportRoutes from './routes/reports.routes';
 import settingsRoutes from './routes/settings.routes';
 import deviceRoutes from './routes/devices.routes';
 import overviewRoutes from './routes/overview.routes';
+import companyRoutes from './routes/companies.routes';
+import damageRoutes from './routes/damages.routes';
+import paymentRoutes from './routes/payments.routes';
+import trackingRoutes from './routes/tracking.routes';
+import aiRoutes from './routes/ai.routes';
 
 const app = express();
 
@@ -50,6 +55,11 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/overview', overviewRoutes);
+app.use('/api/companies', companyRoutes);
+app.use('/api/damages', damageRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/tracking', trackingRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `Not found: ${req.method} ${req.path}` }));
 

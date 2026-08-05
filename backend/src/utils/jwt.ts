@@ -1,13 +1,15 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
-export type AuthRole = 'admin' | 'staff' | 'client';
+export type AuthRole = 'super_admin' | 'admin' | 'staff' | 'client';
 
 export interface AuthTokenPayload {
   sub: string;
   role: AuthRole;
   name: string;
   email: string;
+  /** The company an internal user belongs to. Absent for super admins and clients. */
+  companyId?: string | null;
   deviceId?: string;
 }
 

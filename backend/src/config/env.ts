@@ -28,4 +28,7 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   uploadsDir: process.env.UPLOADS_DIR || 'uploads',
   corsOrigin: process.env.CORS_ORIGIN || '*',
+  // Optional. Without it the AI-assist endpoints report themselves unavailable
+  // and the console falls back to manual entry — nothing else breaks.
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
 };
