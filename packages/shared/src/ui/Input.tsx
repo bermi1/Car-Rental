@@ -1,59 +1,130 @@
 import React from 'react';
 import { cn } from './cn';
+import { Icon, IconName } from './Icon';
+
+const fieldClasses =
+  'w-full rounded-lg border border-line bg-surface text-sm text-fg placeholder:text-fg-subtle ' +
+  'transition-colors duration-150 ' +
+  'focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10 ' +
+  'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-muted';
+
+function FieldShell({
+  label,
+  hint,
+  error,
+  children,
+  className,
+}: {
+  label?: string;
+  hint?: string;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={cn('block', className)}>
+      {label && <span className="mb-1.5 block text-[13px] font-medium text-fg">{label}</span>}
+      {children}
+      {error ? (
+        <span className="mt-1.5 block text-xs text-danger-fg">{error}</span>
+      ) : (
+        hint && <span className="mt-1.5 block text-xs text-fg-subtle">{hint}</span>
+      )}
+    </label>
+  );
+}
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  hint?: string;
   error?: string;
+  icon?: IconName;
+  wrapperClassName?: string;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className, id, ...rest }, ref) => {
-    const inputId = id || rest.name;
-    return (
-      <label className="block">
-        {label && <span className="mb-1.5 block text-sm font-medium text-neutral-700">{label}</span>}
+  ({ label, hint, error, icon, className, wrapperClassName, id, ...rest }, ref) => (
+    <FieldShell label={label} hint={hint} error={error} className={wrapperClassName}>
+      <div className="relative">
+        {icon && (
+          <Icon
+            name={icon}
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle"
+          />
+        )}
         <input
           ref={ref}
-          id={inputId}
+          id={id || rest.name}
           className={cn(
-            'w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900',
-            'placeholder:text-neutral-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100',
-            error && 'border-status-cancelledFg',
+            fieldClasses,
+            'h-9 px-3',
+            icon && 'pl-9',
+            error && 'border-danger focus:border-danger focus:ring-danger/10',
             className
           )}
           {...rest}
         />
-        {error && <span className="mt-1 block text-xs text-status-cancelledFg">{error}</span>}
-      </label>
-    );
-  }
+      </div>
+    </FieldShell>
+  )
 );
 Input.displayName = 'Input';
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
+  hint?: string;
+  error?: string;
+  wrapperClassName?: string;
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, className, children, id, ...rest }, ref) => {
-    const selectId = id || rest.name;
-    return (
-      <label className="block">
-        {label && <span className="mb-1.5 block text-sm font-medium text-neutral-700">{label}</span>}
+  ({ label, hint, error, className, wrapperClassName, children, id, ...rest }, ref) => (
+    <FieldShell label={label} hint={hint} error={error} className={wrapperClassName}>
+      <div className="relative">
         <select
           ref={ref}
-          id={selectId}
-          className={cn(
-            'w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900',
-            'focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100',
-            className
-          )}
+          id={id || rest.name}
+          className={cn(fieldClasses, 'h-9 cursor-pointer appearance-none pl-3 pr-9', className)}
           {...rest}
         >
           {children}
         </select>
-      </label>
-    );
-  }
+        <Icon
+          name="chevronDown"
+          size={15}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-subtle"
+        />
+      </div>
+    </FieldShell>
+  )
 );
 Select.displayName = 'Select';
+
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  hint?: string;
+  error?: string;
+  wrapperClassName?: string;
+}
+
+export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ label, hint, error, className, wrapperClassName, id, ...rest }, ref) => (
+    <FieldShell label={label} hint={hint} error={error} className={wrapperClassName}>
+      <textarea
+        ref={ref}
+        id={id || rest.name}
+        rows={rest.rows ?? 3}
+        className={cn(fieldClasses, 'resize-y px-3 py-2 leading-relaxed', className)}
+        {...rest}
+      />
+    </FieldShell>
+  )
+);
+Textarea.displayName = 'Textarea';
+
+/** Standalone search box used above tables and lists. */
+export const SearchInput = React.forwardRef<HTMLInputElement, InputProps>((props, ref) => (
+  <Input ref={ref} icon="search" type="search" placeholder="Search…" {...props} />
+));
+SearchInput.displayName = 'SearchInput';

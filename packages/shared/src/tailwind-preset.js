@@ -1,33 +1,91 @@
-/** Shared Tailwind preset — extend this from web-admin and web-staff tailwind.config.js */
+/**
+ * Shared Tailwind preset for the rental platform.
+ *
+ * Colours are declared as CSS custom properties (see theme.css) rather than
+ * literal hex values, so a single `.dark` class on <html> reskins the whole
+ * app without any component knowing which theme is active. Every colour here
+ * is semantic — `surface`, `border`, `muted` — because component code should
+ * describe intent, not pick shades.
+ */
+
+/** Wraps a CSS variable so Tailwind's opacity modifiers (bg-surface/50) work. */
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
+const statusColor = (name) => ({
+  DEFAULT: v(`${name}`),
+  soft: v(`${name}-soft`),
+  fg: v(`${name}-fg`),
+});
+
 module.exports = {
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#eef4ff', 100: '#dce8ff', 200: '#b8d0ff', 300: '#8fb3ff', 400: '#5f8fff',
-          500: '#3366ff', 600: '#274fd1', 700: '#1e3ca3', 800: '#182f7e', 900: '#132666',
+        bg: v('bg'),
+        surface: {
+          DEFAULT: v('surface'),
+          raised: v('surface-raised'),
+          sunken: v('surface-sunken'),
         },
-        neutral: {
-          50: '#f7f7f8', 100: '#eeeef0', 200: '#dcdce1', 300: '#c2c2c9', 400: '#9d9da7',
-          500: '#77778a', 600: '#5c5c6b', 700: '#454452', 800: '#2e2d38', 900: '#1b1a22',
+        line: {
+          DEFAULT: v('border'),
+          strong: v('border-strong'),
         },
-        status: {
-          pendingBg: '#f2f1ec', pendingFg: '#8a7a4d',
-          confirmedBg: '#eef2f4', confirmedFg: '#4d7a8a',
-          activeBg: '#eef4ee', activeFg: '#4d8a5a',
-          completedBg: '#f0f0f2', completedFg: '#5c5c6b',
-          cancelledBg: '#f5eeee', cancelledFg: '#8a4d4d',
+        fg: {
+          DEFAULT: v('fg'),
+          muted: v('fg-muted'),
+          subtle: v('fg-subtle'),
         },
+        accent: {
+          DEFAULT: v('accent'),
+          hover: v('accent-hover'),
+          fg: v('accent-fg'),
+          soft: v('accent-soft'),
+          softFg: v('accent-soft-fg'),
+        },
+        success: statusColor('success'),
+        warning: statusColor('warning'),
+        info: statusColor('info'),
+        danger: statusColor('danger'),
+        muted: statusColor('muted'),
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Inter var', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
+      fontSize: {
+        // Tightened tracking on display sizes — large Inter reads loose by default.
+        '2xl': ['1.5rem', { lineHeight: '1.875rem', letterSpacing: '-0.02em' }],
+        '3xl': ['1.875rem', { lineHeight: '2.25rem', letterSpacing: '-0.022em' }],
       },
       borderRadius: {
-        card: '16px',
+        lg: '0.625rem',
+        xl: '0.875rem',
+        '2xl': '1.125rem',
       },
       boxShadow: {
-        card: '0 4px 12px rgba(27,26,34,0.08)',
-        cardLg: '0 12px 32px rgba(27,26,34,0.10)',
+        xs: '0 1px 2px rgb(var(--shadow) / 0.06)',
+        sm: '0 1px 3px rgb(var(--shadow) / 0.08), 0 1px 2px rgb(var(--shadow) / 0.04)',
+        md: '0 4px 12px rgb(var(--shadow) / 0.08), 0 2px 4px rgb(var(--shadow) / 0.04)',
+        lg: '0 12px 32px rgb(var(--shadow) / 0.12), 0 4px 8px rgb(var(--shadow) / 0.04)',
+        pop: '0 16px 48px rgb(var(--shadow) / 0.18)',
+      },
+      keyframes: {
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        'slide-up': {
+          from: { opacity: '0', transform: 'translateY(6px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 150ms ease-out',
+        'slide-up': 'slide-up 200ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
     },
   },

@@ -1,50 +1,69 @@
 import React from 'react';
 import { cn } from './cn';
+import { Icon } from './Icon';
 import { bookingStatusOrder, bookingStatusLabels, BookingStatus } from '../tokens';
 
-export function BookingStepper({ status }: { status: BookingStatus }) {
+/**
+ * Progress through the booking lifecycle. Cancelled is not a step on the
+ * path — it's terminal from anywhere — so it renders as its own banner.
+ */
+export function BookingStepper({ status, className }: { status: BookingStatus; className?: string }) {
   if (status === 'cancelled') {
     return (
-      <div className="rounded-lg bg-status-cancelledBg px-4 py-2 text-sm font-medium text-status-cancelledFg">
-        Cancelled
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-lg bg-danger-soft px-4 py-3 text-sm font-medium text-danger-fg',
+          className
+        )}
+      >
+        <Icon name="x" size={16} />
+        This booking was cancelled
       </div>
     );
   }
+
   const currentIndex = bookingStatusOrder.indexOf(status);
 
   return (
-    <div className="flex items-center">
+    <ol className={cn('flex items-start', className)}>
       {bookingStatusOrder.map((step, i) => {
         const done = i < currentIndex;
         const current = i === currentIndex;
+        const last = i === bookingStatusOrder.length - 1;
+
         return (
-          <React.Fragment key={step}>
-            <div className="flex flex-col items-center gap-1.5">
-              <div
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
-                  done && 'bg-primary-500 text-white',
-                  current && 'bg-primary-100 text-primary-700 ring-2 ring-primary-400',
-                  !done && !current && 'bg-neutral-100 text-neutral-400'
-                )}
-              >
-                {done ? '✓' : i + 1}
-              </div>
+          <li key={step} className={cn('flex items-start', !last && 'flex-1')}>
+            <div className="flex w-20 shrink-0 flex-col items-center gap-2">
               <span
                 className={cn(
-                  'max-w-[80px] text-center text-[11px] leading-tight',
-                  current ? 'font-medium text-neutral-900' : 'text-neutral-400'
+                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                  done && 'bg-accent text-accent-fg',
+                  current && 'bg-accent-soft text-accent-softFg ring-2 ring-accent',
+                  !done && !current && 'bg-surface-sunken text-fg-subtle'
+                )}
+              >
+                {done ? <Icon name="check" size={14} /> : i + 1}
+              </span>
+              <span
+                className={cn(
+                  'text-center text-[11px] leading-tight',
+                  current ? 'font-medium text-fg' : 'text-fg-subtle'
                 )}
               >
                 {bookingStatusLabels[step]}
               </span>
             </div>
-            {i < bookingStatusOrder.length - 1 && (
-              <div className={cn('mx-1 mb-4 h-0.5 flex-1', done ? 'bg-primary-500' : 'bg-neutral-200')} />
+            {!last && (
+              <span
+                className={cn(
+                  'mt-3.5 h-0.5 flex-1 rounded-full transition-colors',
+                  done ? 'bg-accent' : 'bg-line'
+                )}
+              />
             )}
-          </React.Fragment>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

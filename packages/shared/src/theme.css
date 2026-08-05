@@ -1,0 +1,98 @@
+/**
+ * Theme variables consumed by the Tailwind preset.
+ *
+ * Values are space-separated RGB channels (not hex) so Tailwind can apply
+ * opacity modifiers to them. Light is the default; `.dark` on <html> swaps
+ * the palette.
+ */
+
+:root {
+  /* Surfaces — a cool near-white, with cards sitting a shade brighter. */
+  --bg: 248 249 251;
+  --surface: 255 255 255;
+  --surface-raised: 255 255 255;
+  --surface-sunken: 244 245 248;
+
+  --border: 228 230 237;
+  --border-strong: 209 212 223;
+
+  /* Text — near-black rather than pure black, which reads softer on white. */
+  --fg: 24 25 33;
+  --fg-muted: 96 100 118;
+  --fg-subtle: 142 146 165;
+
+  /* Accent — a single confident indigo. */
+  --accent: 79 70 229;
+  --accent-hover: 67 56 202;
+  --accent-fg: 255 255 255;
+  --accent-soft: 238 238 253;
+  --accent-soft-fg: 67 56 202;
+
+  --success: 22 163 116;
+  --success-soft: 226 246 239;
+  --success-fg: 15 118 84;
+
+  --warning: 202 138 4;
+  --warning-soft: 252 244 222;
+  --warning-fg: 146 96 4;
+
+  --info: 14 133 195;
+  --info-soft: 226 242 251;
+  --info-fg: 12 105 154;
+
+  --danger: 220 66 66;
+  --danger-soft: 253 234 234;
+  --danger-fg: 178 44 44;
+
+  --muted: 130 134 152;
+  --muted-soft: 240 241 245;
+  --muted-fg: 96 100 118;
+
+  --shadow: 15 18 34;
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 11 12 16;
+  --surface: 20 22 28;
+  --surface-raised: 26 28 36;
+  --surface-sunken: 15 17 22;
+
+  --border: 38 41 51;
+  --border-strong: 55 59 72;
+
+  --fg: 238 240 245;
+  --fg-muted: 154 159 176;
+  --fg-subtle: 112 117 134;
+
+  --accent: 129 122 255;
+  --accent-hover: 145 139 255;
+  --accent-fg: 16 16 28;
+  --accent-soft: 39 38 66;
+  --accent-soft-fg: 178 173 255;
+
+  --success: 45 197 144;
+  --success-soft: 20 45 38;
+  --success-fg: 92 219 173;
+
+  --warning: 224 168 43;
+  --warning-soft: 51 40 15;
+  --warning-fg: 238 195 96;
+
+  --info: 56 168 227;
+  --info-soft: 17 41 56;
+  --info-fg: 116 200 240;
+
+  --danger: 240 106 106;
+  --danger-soft: 56 25 25;
+  --danger-fg: 248 155 155;
+
+  --muted: 120 126 145;
+  --muted-soft: 32 35 44;
+  --muted-fg: 154 159 176;
+
+  --shadow: 0 0 0;
+
+  color-scheme: dark;
+}

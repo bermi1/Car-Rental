@@ -1,0 +1,46 @@
+@import '../../packages/shared/src/theme.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-bg font-sans text-fg;
+  }
+
+  /* Keyboard focus stays visible everywhere; mouse clicks don't draw rings. */
+  :focus-visible {
+    @apply outline-none;
+  }
+
+  ::selection {
+    @apply bg-accent/20;
+  }
+}
+
+@layer utilities {
+  /* Thin, theme-aware scrollbars for the sidebar and scroll regions. */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-strong)) transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--border-strong));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
