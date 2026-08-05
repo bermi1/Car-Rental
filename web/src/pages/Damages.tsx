@@ -13,16 +13,12 @@ import {
   Select,
   SkeletonTable,
   StatusBadge,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
+  DataTable,
   Tabs,
   Textarea,
   formatDate,
   formatMoney,
+  type DataColumn,
 } from '@rental/shared';
 import { api, ApiError } from '../api/client';
 import { useI18n, useT } from '../i18n';
@@ -52,6 +48,14 @@ interface Suggestion {
 }
 
 const SEVERITY_TONE = { minor: 'pending', moderate: 'in_service', severe: 'cancelled' } as const;
+
+// Explicit map rather than a template literal, so a missing catalogue entry is
+// a type error instead of an at-runtime fallback.
+const SEVERITY_LABEL = {
+  minor: 'damages.minor',
+  moderate: 'damages.moderate',
+  severe: 'damages.severe',
+} as const;
 
 export function Damages() {
   const t = useT();
@@ -138,6 +142,83 @@ export function Damages() {
     }
   }
 
+
+  const columns: DataColumn<DamageRow>[] = [
+    {
+      key: 'client',
+      header: t('common.client'),
+      primary: true,
+      render: (d) => (
+        <Link to={`/bookings/${d.booking_id}`} className="font-medium text-fg transition-colors hover:text-accent">
+          {d.client_name}
+        </Link>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'vehicle',
+      header: t('common.vehicle'),
+      secondary: true,
+      render: (d) => (
+        <>
+          {d.make} {d.model} <span className="text-fg-subtle">{d.plate_number}</span>
+        </>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'description',
+      header: t('common.notes'),
+      render: (d) => (
+        <>
+          <span className="block truncate">{d.description}</span>
+          {d.ai_assisted && (
+            <Chip tone="accent" className="mt-1">
+              {t('damages.aiAssisted')}
+            </Chip>
+          )}
+        </>
+      ),
+      className: 'max-w-[280px]',
+    },
+    {
+      key: 'severity',
+      header: t('damages.severity'),
+      render: (d) => <StatusBadge status={SEVERITY_TONE[d.severity]} label={t(SEVERITY_LABEL[d.severity])} />,
+    },
+    {
+      key: 'penalty',
+      header: t('damages.penalty'),
+      numeric: true,
+      render: (d) => <span className="font-medium text-fg">{formatMoney(d.penalty_amount, d.currency)}</span>,
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'recorded',
+      header: t('common.date'),
+      render: (d) => <span className="text-xs text-fg-subtle">{formatDate(d.created_at)}</span>,
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'actions',
+      header: '',
+      action: true,
+      render: (d) =>
+        d.status === 'assessed' ? (
+          <div className="flex gap-2">
+            <Button size="sm" isLoading={busyId === d.id} onClick={() => setStatusOf(d, 'charged')}>
+              {t('damages.charge')}
+            </Button>
+            <Button size="sm" variant="ghost" disabled={busyId === d.id} onClick={() => setStatusOf(d, 'waived')}>
+              {t('damages.waive')}
+            </Button>
+          </div>
+        ) : (
+          <span className="text-xs capitalize text-fg-subtle">{d.status}</span>
+        ),
+    },
+  ];
+
   return (
     <>
       <PageHeader
@@ -170,76 +251,7 @@ export function Damages() {
                 {damages.length} {damages.length === 1 ? 'item' : 'items'}
               </p>
             </CardToolbar>
-            <Table>
-              <THead>
-                <TR className="hover:bg-transparent">
-                  <TH>{t('common.client')}</TH>
-                  <TH>{t('common.vehicle')}</TH>
-                  <TH>{t('common.notes')}</TH>
-                  <TH>{t('damages.severity')}</TH>
-                  <TH numeric>{t('damages.penalty')}</TH>
-                  <TH>{t('common.status')}</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {damages.map((d) => (
-                  <TR key={d.id}>
-                    <TD className="whitespace-nowrap">
-                      <Link
-                        to={`/bookings/${d.booking_id}`}
-                        className="font-medium text-fg transition-colors hover:text-accent"
-                      >
-                        {d.client_name}
-                      </Link>
-                    </TD>
-                    <TD className="whitespace-nowrap">
-                      {d.make} {d.model}
-                      <span className="ml-1.5 text-fg-subtle">{d.plate_number}</span>
-                    </TD>
-                    <TD className="max-w-[280px]">
-                      <span className="block truncate">{d.description}</span>
-                      {d.ai_assisted && (
-                        <Chip tone="accent" className="mt-1">
-                          {t('damages.aiAssisted')}
-                        </Chip>
-                      )}
-                    </TD>
-                    <TD>
-                      <StatusBadge status={SEVERITY_TONE[d.severity]} label={t(`damages.${d.severity}`)} />
-                    </TD>
-                    <TD numeric className="whitespace-nowrap font-medium text-fg">
-                      {formatMoney(d.penalty_amount, d.currency)}
-                    </TD>
-                    <TD>
-                      <span className="whitespace-nowrap text-xs text-fg-subtle">
-                        {formatDate(d.created_at)}
-                      </span>
-                    </TD>
-                    <TD>
-                      {d.status === 'assessed' && (
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" isLoading={busyId === d.id} onClick={() => setStatusOf(d, 'charged')}>
-                            {t('damages.charge')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busyId === d.id}
-                            onClick={() => setStatusOf(d, 'waived')}
-                          >
-                            {t('damages.waive')}
-                          </Button>
-                        </div>
-                      )}
-                      {d.status !== 'assessed' && (
-                        <span className="block text-right text-xs capitalize text-fg-subtle">{d.status}</span>
-                      )}
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <DataTable columns={columns} rows={damages} rowKey={(d) => d.id} />
           </>
         )}
       </Card>
@@ -289,7 +301,7 @@ export function Damages() {
                         <p className="text-[13px] font-medium text-fg">{s.description}</p>
                         <p className="mt-1 text-xs text-fg-muted">{s.reasoning}</p>
                       </div>
-                      <StatusBadge status={SEVERITY_TONE[s.severity]} label={t(`damages.${s.severity}`)} />
+                      <StatusBadge status={SEVERITY_TONE[s.severity]} label={t(SEVERITY_LABEL[s.severity])} />
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold tabular-nums text-fg">

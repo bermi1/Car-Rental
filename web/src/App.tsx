@@ -6,6 +6,7 @@ import { I18nProvider } from './i18n';
 import { RequireAuth, RequireAdmin, RequireSuperAdmin } from './components/guards';
 import { Shell } from './components/Shell';
 
+import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { BookingsList } from './pages/Bookings/BookingsList';
@@ -38,6 +39,8 @@ export function App() {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
+              {/* Public marketing page. Signed-in users are bounced to /dashboard. */}
+              <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route
                 element={
@@ -46,7 +49,7 @@ export function App() {
                   </RequireAuth>
                 }
               >
-                <Route path="/" element={<Overview />} />
+                <Route path="/dashboard" element={<Overview />} />
                 <Route path="/bookings" element={<BookingsList />} />
                 <Route path="/bookings/new" element={<BookingCreate />} />
                 <Route path="/bookings/:id" element={<BookingDetail />} />
@@ -70,7 +73,7 @@ export function App() {
 
                 <Route path="/companies" element={platform(<Companies />)} />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Routes>
           </BrowserRouter>

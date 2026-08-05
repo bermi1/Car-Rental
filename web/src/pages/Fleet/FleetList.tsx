@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   CardToolbar,
+  DataTable,
   EmptyState,
   Input,
   Modal,
@@ -11,31 +12,20 @@ import {
   SearchInput,
   SkeletonTable,
   StatusBadge,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
   Tabs,
   formatMoney,
+  type DataColumn,
 } from '@rental/shared';
 import type { Vehicle } from '@rental/shared';
 import { api, ApiError } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useT } from '../../i18n';
 import { ErrorNotice } from '../../components/ErrorNotice';
-
-const FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'available', label: 'Available' },
-  { value: 'booked', label: 'Booked' },
-  { value: 'in_service', label: 'In Service' },
-  { value: 'out_of_service', label: 'Out of Service' },
-];
 
 const EMPTY_FORM = { make: '', model: '', plate_number: '', category: '', daily_rate_tzs: '' };
 
 export function FleetList() {
+  const t = useT();
   const { isAdmin } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [status, setStatus] = useState('');
@@ -51,6 +41,14 @@ export function FleetList() {
     api.get<Vehicle[]>(`/vehicles${status ? `?status=${status}` : ''}`).then(setVehicles);
   }
   useEffect(load, [status]);
+
+  const filters = [
+    { value: '', label: t('common.all') },
+    { value: 'available', label: 'Available' },
+    { value: 'booked', label: 'Booked' },
+    { value: 'in_service', label: 'In Service' },
+    { value: 'out_of_service', label: 'Out of Service' },
+  ];
 
   const visible = useMemo(() => {
     if (!vehicles) return null;
@@ -77,10 +75,45 @@ export function FleetList() {
     }
   }
 
+  const columns: DataColumn<Vehicle>[] = [
+    {
+      key: 'vehicle',
+      header: t('common.vehicle'),
+      primary: true,
+      render: (v) => (
+        <Link to={`/fleet/${v.id}`} className="font-medium text-fg transition-colors hover:text-accent">
+          {v.make} {v.model}
+        </Link>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    { key: 'plate', header: 'Plate', secondary: true, render: (v) => v.plate_number },
+    { key: 'category', header: 'Category', render: (v) => v.category },
+    {
+      key: 'mileage',
+      header: 'Mileage',
+      numeric: true,
+      render: (v) => `${v.current_mileage.toLocaleString()} km`,
+    },
+    {
+      key: 'rate',
+      header: 'Daily Rate',
+      numeric: true,
+      render: (v) => <span className="font-medium text-fg">{formatMoney(v.daily_rate_tzs)}</span>,
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'status',
+      header: t('common.status'),
+      action: true,
+      render: (v) => <StatusBadge status={v.status} />,
+    },
+  ];
+
   return (
     <>
       <PageHeader
-        title="Fleet"
+        title={t('nav.fleet')}
         description="Vehicles, availability and service status."
         actions={
           isAdmin && (
@@ -91,12 +124,14 @@ export function FleetList() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Tabs items={FILTERS} value={status} onChange={setStatus} />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+          <Tabs items={filters} value={status} onChange={setStatus} className="w-max sm:w-auto" />
+        </div>
         <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search make, model, plate…"
+          placeholder={t('common.search')}
           wrapperClassName="w-full sm:w-72"
         />
       </div>
@@ -121,44 +156,10 @@ export function FleetList() {
           <>
             <CardToolbar>
               <p className="text-[13px] text-fg-muted">
-                {visible.length} vehicle{visible.length === 1 ? '' : 's'}
+                {visible.length} {visible.length === 1 ? 'vehicle' : 'vehicles'}
               </p>
             </CardToolbar>
-            <Table>
-              <THead>
-                <TR className="hover:bg-transparent">
-                  <TH>Vehicle</TH>
-                  <TH>Plate</TH>
-                  <TH>Category</TH>
-                  <TH numeric>Mileage</TH>
-                  <TH numeric>Daily Rate</TH>
-                  <TH>Status</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {visible.map((v) => (
-                  <TR key={v.id}>
-                    <TD>
-                      <Link
-                        to={`/fleet/${v.id}`}
-                        className="font-medium text-fg transition-colors hover:text-accent"
-                      >
-                        {v.make} {v.model}
-                      </Link>
-                    </TD>
-                    <TD>{v.plate_number}</TD>
-                    <TD>{v.category}</TD>
-                    <TD numeric>{v.current_mileage.toLocaleString()} km</TD>
-                    <TD numeric className="font-medium text-fg">
-                      {formatMoney(v.daily_rate_tzs)}
-                    </TD>
-                    <TD>
-                      <StatusBadge status={v.status} />
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <DataTable columns={columns} rows={visible} rowKey={(v) => v.id} />
           </>
         )}
       </Card>
@@ -167,14 +168,14 @@ export function FleetList() {
         open={showForm}
         onClose={() => setShowForm(false)}
         title="Add vehicle"
-        description="Register a new vehicle in the fleet."
+        description="Register a new vehicle in this company's fleet."
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowForm(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button form="add-vehicle" type="submit" isLoading={saving}>
-              Save vehicle
+              {t('common.save')}
             </Button>
           </>
         }

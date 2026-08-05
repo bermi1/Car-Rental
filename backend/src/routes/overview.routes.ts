@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { query } from '../config/db';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requireRole, requireCompanyAdmin } from '../middleware/auth';
 
 const router = Router();
 
 // Admin dashboard summary
-router.get('/admin', requireAuth, requireRole('admin'), async (req, res) => {
+router.get('/admin', requireAuth, requireCompanyAdmin, async (req, res) => {
   const { from, to } = req.query as Record<string, string>;
   const dateFrom = from || '1970-01-01';
   const dateTo = to || '2999-12-31';

@@ -22,11 +22,11 @@
   --fg-subtle: 142 146 165;
 
   /* Accent — a single confident indigo. */
-  --accent: 79 70 229;
-  --accent-hover: 67 56 202;
+  --accent: 11 99 246;
+  --accent-hover: 8 84 214;
   --accent-fg: 255 255 255;
-  --accent-soft: 238 238 253;
-  --accent-soft-fg: 67 56 202;
+  --accent-soft: 231 240 255;
+  --accent-soft-fg: 9 78 199;
 
   --success: 22 163 116;
   --success-soft: 226 246 239;
@@ -66,11 +66,11 @@
   --fg-muted: 154 159 176;
   --fg-subtle: 112 117 134;
 
-  --accent: 129 122 255;
-  --accent-hover: 145 139 255;
+  --accent: 90 158 255;
+  --accent-hover: 120 178 255;
   --accent-fg: 16 16 28;
-  --accent-soft: 39 38 66;
-  --accent-soft-fg: 178 173 255;
+  --accent-soft: 18 38 68;
+  --accent-soft-fg: 150 195 255;
 
   --success: 45 197 144;
   --success-soft: 20 45 38;

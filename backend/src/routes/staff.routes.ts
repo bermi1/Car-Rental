@@ -1,19 +1,19 @@
 import { Router } from 'express';
 import { query } from '../config/db';
-import { requireAuth, requireRole, AuthedRequest } from '../middleware/auth';
+import { requireAuth, requireRole, AuthedRequest, requireCompanyAdmin } from '../middleware/auth';
 import { hashPassword } from '../utils/password';
 
 const router = Router();
 
 // Admin-only: manage staff accounts
-router.get('/', requireAuth, requireRole('admin'), async (_req, res) => {
+router.get('/', requireAuth, requireCompanyAdmin, async (_req, res) => {
   const { rows } = await query(
     'SELECT id, name, email, role, is_active, created_at FROM staff_users ORDER BY created_at DESC'
   );
   res.json(rows);
 });
 
-router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
+router.post('/', requireAuth, requireCompanyAdmin, async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email, password are required' });
 
@@ -29,7 +29,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
   res.status(201).json(rows[0]);
 });
 
-router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.put('/:id', requireAuth, requireCompanyAdmin, async (req, res) => {
   const { name, role, is_active, password } = req.body;
   const updates: string[] = [];
   const params: any[] = [];
@@ -58,7 +58,7 @@ router.get('/me/activity', requireAuth, requireRole('admin', 'staff'), async (re
 });
 
 // Admin: recent activity feed across all staff (dashboard)
-router.get('/activity/recent', requireAuth, requireRole('admin'), async (_req, res) => {
+router.get('/activity/recent', requireAuth, requireCompanyAdmin, async (_req, res) => {
   const { rows } = await query(
     `SELECT a.*, s.name AS actor_name FROM activity_log a
      LEFT JOIN staff_users s ON s.id = a.actor_staff_id

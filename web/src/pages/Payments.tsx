@@ -4,23 +4,19 @@ import {
   Button,
   Card,
   CardToolbar,
+  DataTable,
   EmptyState,
   Icon,
   Modal,
   PageHeader,
   SkeletonTable,
   StatusBadge,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
   Tabs,
   Textarea,
   formatDate,
   formatMoney,
   humanize,
+  type DataColumn,
 } from '@rental/shared';
 import { api, ApiError, assetUrl } from '../api/client';
 import { useT } from '../i18n';
@@ -67,10 +63,7 @@ export function Payments() {
   ];
 
   const confirmedTotal = useMemo(
-    () =>
-      (payments ?? [])
-        .filter((p) => p.status === 'confirmed')
-        .reduce((sum, p) => sum + Number(p.amount), 0),
+    () => (payments ?? []).filter((p) => p.status === 'confirmed').reduce((s, p) => s + Number(p.amount), 0),
     [payments]
   );
 
@@ -106,12 +99,123 @@ export function Payments() {
     }
   }
 
+  const columns: DataColumn<PaymentRow>[] = [
+    {
+      key: 'client',
+      header: t('common.client'),
+      primary: true,
+      render: (p) => (
+        <Link to={`/bookings/${p.booking_id}`} className="font-medium text-fg transition-colors hover:text-accent">
+          {p.client_name}
+        </Link>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'vehicle',
+      header: t('common.vehicle'),
+      secondary: true,
+      render: (p) => (
+        <>
+          {p.make} {p.model} <span className="text-fg-subtle">{p.plate_number}</span>
+        </>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'amount',
+      header: t('common.amount'),
+      numeric: true,
+      render: (p) => (
+        <span className="font-medium text-fg">{formatMoney(p.amount, p.currency)}</span>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'method',
+      header: t('payments.method'),
+      render: (p) => (
+        <>
+          {humanize(p.method)}
+          {p.reference && <span className="ml-1.5 text-xs text-fg-subtle">{p.reference}</span>}
+        </>
+      ),
+    },
+    {
+      key: 'receipt',
+      header: t('payments.receipt'),
+      render: (p) =>
+        p.receipt_file_path ? (
+          <a
+            href={assetUrl(p.receipt_file_path)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-accent hover:opacity-75"
+          >
+            {t('common.view')}
+            <Icon name="external" size={12} />
+          </a>
+        ) : (
+          <span className="text-fg-subtle">—</span>
+        ),
+    },
+    {
+      key: 'status',
+      header: t('common.status'),
+      action: true,
+      render: (p) => (
+        <div className="text-right">
+          <StatusBadge
+            status={p.status === 'confirmed' ? 'verified' : p.status === 'rejected' ? 'rejected' : 'pending'}
+            label={
+              p.status === 'confirmed'
+                ? t('payments.confirmed')
+                : p.status === 'rejected'
+                  ? t('payments.rejected')
+                  : t('payments.awaiting')
+            }
+          />
+          {p.rejection_reason && (
+            <p className="mt-1 max-w-[180px] truncate text-xs text-fg-subtle">{p.rejection_reason}</p>
+          )}
+          {p.status === 'confirmed' && p.paid_at && (
+            <p className="mt-1 text-xs text-fg-subtle">{formatDate(p.paid_at)}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      action: true,
+      render: (p) =>
+        p.status === 'awaiting_confirmation' ? (
+          <div className="flex gap-2">
+            <Button size="sm" icon="check" isLoading={busyId === p.id} onClick={() => confirm(p)}>
+              {t('common.confirm')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busyId === p.id}
+              onClick={() => {
+                setRejecting(p);
+                setReason('');
+              }}
+            >
+              {t('common.reject')}
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
+
   return (
     <>
       <PageHeader title={t('payments.title')} description={t('payments.description')} />
 
-      <div className="mb-4">
-        <Tabs items={filters} value={status} onChange={setStatus} />
+      <div className="mb-4 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+        <Tabs items={filters} value={status} onChange={setStatus} className="w-max sm:w-auto" />
       </div>
 
       <ErrorNotice message={error} />
@@ -123,7 +227,7 @@ export function Payments() {
           <EmptyState icon="wallet" title={t('payments.empty')} description={t('payments.emptyHint')} />
         ) : (
           <>
-            <CardToolbar>
+            <CardToolbar className="flex-wrap">
               <p className="text-[13px] text-fg-muted">
                 {payments.length} {payments.length === 1 ? 'payment' : 'payments'}
               </p>
@@ -134,109 +238,7 @@ export function Payments() {
                 </p>
               )}
             </CardToolbar>
-            <Table>
-              <THead>
-                <TR className="hover:bg-transparent">
-                  <TH>{t('common.client')}</TH>
-                  <TH>{t('common.vehicle')}</TH>
-                  <TH numeric>{t('common.amount')}</TH>
-                  <TH>{t('payments.method')}</TH>
-                  <TH>{t('payments.receipt')}</TH>
-                  <TH>{t('common.status')}</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {payments.map((p) => (
-                  <TR key={p.id}>
-                    <TD className="whitespace-nowrap">
-                      <Link
-                        to={`/bookings/${p.booking_id}`}
-                        className="font-medium text-fg transition-colors hover:text-accent"
-                      >
-                        {p.client_name}
-                      </Link>
-                    </TD>
-                    <TD className="whitespace-nowrap">
-                      {p.make} {p.model}
-                      <span className="ml-1.5 text-fg-subtle">{p.plate_number}</span>
-                    </TD>
-                    <TD numeric className="whitespace-nowrap font-medium text-fg">
-                      {formatMoney(p.amount, p.currency)}
-                    </TD>
-                    <TD>
-                      <span className="whitespace-nowrap">{humanize(p.method)}</span>
-                      {p.reference && (
-                        <span className="ml-1.5 text-xs text-fg-subtle">{p.reference}</span>
-                      )}
-                    </TD>
-                    <TD>
-                      {p.receipt_file_path ? (
-                        <a
-                          href={assetUrl(p.receipt_file_path)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-accent hover:opacity-75"
-                        >
-                          {t('common.view')}
-                          <Icon name="external" size={12} />
-                        </a>
-                      ) : (
-                        <span className="text-fg-subtle">{t('payments.noReceipt')}</span>
-                      )}
-                    </TD>
-                    <TD>
-                      <StatusBadge
-                        status={
-                          p.status === 'confirmed'
-                            ? 'verified'
-                            : p.status === 'rejected'
-                              ? 'rejected'
-                              : 'pending'
-                        }
-                        label={
-                          p.status === 'confirmed'
-                            ? t('payments.confirmed')
-                            : p.status === 'rejected'
-                              ? t('payments.rejected')
-                              : t('payments.awaiting')
-                        }
-                      />
-                      {p.rejection_reason && (
-                        <p className="mt-1 max-w-[180px] truncate text-xs text-fg-subtle">
-                          {p.rejection_reason}
-                        </p>
-                      )}
-                    </TD>
-                    <TD>
-                      {p.status === 'awaiting_confirmation' && (
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" icon="check" isLoading={busyId === p.id} onClick={() => confirm(p)}>
-                            {t('common.confirm')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busyId === p.id}
-                            onClick={() => {
-                              setRejecting(p);
-                              setReason('');
-                            }}
-                          >
-                            {t('common.reject')}
-                          </Button>
-                        </div>
-                      )}
-                      {p.status === 'confirmed' && p.paid_at && (
-                        <span className="block text-right text-xs text-fg-subtle">
-                          {formatDate(p.paid_at)}
-                        </span>
-                      )}
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <DataTable columns={columns} rows={payments} rowKey={(p) => p.id} />
           </>
         )}
       </Card>
@@ -245,7 +247,9 @@ export function Payments() {
         open={Boolean(rejecting)}
         onClose={() => setRejecting(null)}
         title={t('payments.rejectPayment')}
-        description={rejecting ? `${formatMoney(rejecting.amount, rejecting.currency)} — ${rejecting.client_name}` : undefined}
+        description={
+          rejecting ? `${formatMoney(rejecting.amount, rejecting.currency)} — ${rejecting.client_name}` : undefined
+        }
         size="sm"
         footer={
           <>

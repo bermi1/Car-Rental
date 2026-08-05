@@ -1,20 +1,32 @@
 {
   "expo": {
-    "name": "Rental Client",
-    "slug": "rental-client",
+    "name": "BERMI RENTALS",
+    "slug": "bermi-rentals",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
+    "backgroundColor": "#0B0C10",
+    "primaryColor": "#4F46E5",
+    "splash": {
+      "backgroundColor": "#0B0C10",
+      "resizeMode": "contain"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "co.tz.rental.client"
+      "bundleIdentifier": "co.tz.bermirentals.client",
+      "splash": {
+        "backgroundColor": "#0B0C10"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#3366FF"
+        "backgroundColor": "#4F46E5"
       },
-      "package": "co.tz.rental.client"
+      "package": "co.tz.bermirentals.client",
+      "splash": {
+        "backgroundColor": "#0B0C10"
+      }
     },
     "extra": {
       "apiBaseUrl": "http://localhost:4000"

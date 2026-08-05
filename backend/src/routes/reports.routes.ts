@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import PDFDocument from 'pdfkit';
 import { query } from '../config/db';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requireRole, requireCompanyAdmin } from '../middleware/auth';
 import { toCsv } from '../services/csv';
 
 const router = Router();
-router.use(requireAuth, requireRole('admin'));
+router.use(requireAuth, requireCompanyAdmin);
 
 async function revenueByVehicle(from: string, to: string) {
   const { rows } = await query(

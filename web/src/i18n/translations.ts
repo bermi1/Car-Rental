@@ -55,7 +55,7 @@ export const en = {
   'nav.assistant': 'Assistant',
 
   // Login
-  'login.title': 'Rental Console',
+  'login.title': 'BERMI RENTALS',
   'login.subtitle': 'Sign in to manage fleet and bookings',
   'login.email': 'Email',
   'login.password': 'Password',
@@ -231,7 +231,7 @@ export const sw: Translations = {
   'nav.assistant': 'Msaidizi',
 
   // Login
-  'login.title': 'Rental Console',
+  'login.title': 'BERMI RENTALS',
   'login.subtitle': 'Ingia kusimamia magari na kukodi',
   'login.email': 'Barua pepe',
   'login.password': 'Nenosiri',

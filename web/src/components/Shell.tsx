@@ -6,19 +6,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
 import { visibleSections } from '../navigation';
 import { api } from '../api/client';
+import { Logo } from './Logo';
 
 function Brand() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-fg">
-        <Icon name="car" size={18} />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold leading-tight text-fg">Rental Console</span>
-        <span className="block text-[11px] leading-tight text-fg-subtle">Tanzania</span>
-      </span>
-    </div>
-  );
+  return <Logo size={34} />;
 }
 
 /** Lets a super admin choose which tenant they're working inside. */

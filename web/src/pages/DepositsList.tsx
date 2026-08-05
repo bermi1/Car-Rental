@@ -9,16 +9,12 @@ import {
   PageHeader,
   SkeletonTable,
   StatusBadge,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
+  DataTable,
   Tabs,
   Textarea,
   formatDate,
   formatMoney,
+  type DataColumn,
 } from '@rental/shared';
 import { api, ApiError } from '../api/client';
 import { ErrorNotice } from '../components/ErrorNotice';
@@ -85,6 +81,60 @@ export function DepositsList() {
 
   const totalHeld = deposits?.filter((d) => d.status === 'held').reduce((s, d) => s + Number(d.amount), 0) ?? 0;
 
+  const columns: DataColumn<DepositRow>[] = [
+    {
+      key: 'client',
+      header: 'Client',
+      primary: true,
+      render: (d) => (
+        <Link to={`/bookings/${d.booking_id}`} className="font-medium text-fg transition-colors hover:text-accent">
+          {d.client_name}
+        </Link>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      numeric: true,
+      render: (d) => <span className="font-medium text-fg">{formatMoney(d.amount)}</span>,
+      className: 'whitespace-nowrap',
+    },
+    { key: 'status', header: 'Status', action: true, render: (d) => <StatusBadge status={d.status} /> },
+    { key: 'reason', header: 'Reason', render: (d) => d.reason || '—', className: 'max-w-[220px] truncate' },
+    {
+      key: 'recorded',
+      header: 'Recorded',
+      secondary: true,
+      render: (d) => formatDate(d.recorded_at),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'actions',
+      header: '',
+      action: true,
+      render: (d) =>
+        d.status === 'held' ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" isLoading={busyId === d.id} onClick={() => release(d)}>
+              Release
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busyId === d.id}
+              onClick={() => {
+                setForfeiting(d);
+                setReason('');
+              }}
+            >
+              Forfeit
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
+
   return (
     <>
       <PageHeader title="Deposits" description="Security deposits held against rentals." />
@@ -112,65 +162,7 @@ export function DepositsList() {
                 </p>
               )}
             </CardToolbar>
-            <Table>
-              <THead>
-                <TR className="hover:bg-transparent">
-                  <TH>Client</TH>
-                  <TH numeric>Amount</TH>
-                  <TH>Status</TH>
-                  <TH>Reason</TH>
-                  <TH>Recorded</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {deposits.map((d) => (
-                  <TR key={d.id}>
-                    <TD>
-                      <Link
-                        to={`/bookings/${d.booking_id}`}
-                        className="font-medium text-fg transition-colors hover:text-accent"
-                      >
-                        {d.client_name}
-                      </Link>
-                    </TD>
-                    <TD numeric className="font-medium text-fg">
-                      {formatMoney(d.amount)}
-                    </TD>
-                    <TD>
-                      <StatusBadge status={d.status} />
-                    </TD>
-                    <TD className="max-w-[220px] truncate">{d.reason || '—'}</TD>
-                    <TD className="whitespace-nowrap">{formatDate(d.recorded_at)}</TD>
-                    <TD>
-                      {d.status === 'held' && (
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            isLoading={busyId === d.id}
-                            onClick={() => release(d)}
-                          >
-                            Release
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busyId === d.id}
-                            onClick={() => {
-                              setForfeiting(d);
-                              setReason('');
-                            }}
-                          >
-                            Forfeit
-                          </Button>
-                        </div>
-                      )}
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <DataTable columns={columns} rows={deposits} rowKey={(d) => d.id} />
           </>
         )}
       </Card>

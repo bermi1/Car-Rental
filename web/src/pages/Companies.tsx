@@ -9,13 +9,9 @@ import {
   PageHeader,
   SkeletonTable,
   StatusBadge,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
+  DataTable,
   formatDate,
+  type DataColumn,
 } from '@rental/shared';
 import { api, ApiError } from '../api/client';
 import { useT } from '../i18n';
@@ -67,6 +63,54 @@ export function Companies() {
     }
   }
 
+  const columns: DataColumn<CompanyRow>[] = [
+    {
+      key: 'name',
+      header: t('companies.name'),
+      primary: true,
+      render: (c) => <span className="font-medium text-fg">{c.name}</span>,
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'contact',
+      header: t('companies.contactEmail'),
+      secondary: true,
+      render: (c) => c.contact_email || '—',
+    },
+    { key: 'region', header: t('companies.region'), render: (c) => c.region || '—' },
+    { key: 'vehicles', header: t('companies.vehicles'), numeric: true, render: (c) => c.vehicle_count },
+    { key: 'bookings', header: t('companies.bookings'), numeric: true, render: (c) => c.booking_count },
+    { key: 'staff', header: t('companies.staff'), numeric: true, render: (c) => c.staff_count },
+    {
+      key: 'status',
+      header: t('common.status'),
+      action: true,
+      render: (c) => (
+        <StatusBadge
+          status={c.is_active ? 'verified' : 'inactive'}
+          label={c.is_active ? 'Active' : 'Suspended'}
+        />
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      action: true,
+      render: (c) =>
+        active?.id === c.id ? (
+          <span className="text-xs font-medium text-accent">{t('companies.switcher')}</span>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => switchCompany({ id: c.id, name: c.name, slug: c.slug })}
+          >
+            {t('common.open')}
+          </Button>
+        ),
+    },
+  ];
+
   return (
     <>
       <PageHeader
@@ -93,57 +137,7 @@ export function Companies() {
                 {companies.length} {companies.length === 1 ? 'company' : 'companies'}
               </p>
             </CardToolbar>
-            <Table>
-              <THead>
-                <TR className="hover:bg-transparent">
-                  <TH>{t('companies.name')}</TH>
-                  <TH>{t('companies.region')}</TH>
-                  <TH numeric>{t('companies.vehicles')}</TH>
-                  <TH numeric>{t('companies.bookings')}</TH>
-                  <TH numeric>{t('companies.staff')}</TH>
-                  <TH>{t('common.status')}</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {companies.map((c) => (
-                  <TR key={c.id}>
-                    <TD className="whitespace-nowrap">
-                      <span className="font-medium text-fg">{c.name}</span>
-                      {c.contact_email && (
-                        <span className="block text-xs text-fg-subtle">{c.contact_email}</span>
-                      )}
-                    </TD>
-                    <TD>{c.region || '—'}</TD>
-                    <TD numeric>{c.vehicle_count}</TD>
-                    <TD numeric>{c.booking_count}</TD>
-                    <TD numeric>{c.staff_count}</TD>
-                    <TD>
-                      <StatusBadge
-                        status={c.is_active ? 'verified' : 'inactive'}
-                        label={c.is_active ? 'Active' : 'Suspended'}
-                      />
-                      <span className="mt-1 block text-xs text-fg-subtle">{formatDate(c.created_at)}</span>
-                    </TD>
-                    <TD>
-                      <div className="flex justify-end">
-                        {active?.id === c.id ? (
-                          <span className="text-xs font-medium text-accent">{t('companies.switcher')}</span>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => switchCompany({ id: c.id, name: c.name, slug: c.slug })}
-                          >
-                            {t('common.open')}
-                          </Button>
-                        )}
-                      </div>
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <DataTable columns={columns} rows={companies} rowKey={(c) => c.id} />
           </>
         )}
       </Card>

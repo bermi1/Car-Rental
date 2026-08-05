@@ -25,7 +25,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     titleKey: 'nav.operations',
     items: [
-      { to: '/', labelKey: 'nav.overview', icon: 'dashboard', end: true },
+      { to: '/dashboard', labelKey: 'nav.overview', icon: 'dashboard', end: true },
       { to: '/bookings', labelKey: 'nav.bookings', icon: 'calendar' },
       { to: '/check-in-out', labelKey: 'nav.checkInOut', icon: 'clipboard' },
       { to: '/documents', labelKey: 'nav.documents', icon: 'shield' },

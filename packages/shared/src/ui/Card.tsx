@@ -49,7 +49,10 @@ export function CardDescription({ className, children, ...rest }: React.HTMLAttr
 export function CardToolbar({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('flex items-center justify-between gap-4 border-b border-line px-5 py-3.5', className)}
+      className={cn(
+        'flex items-center justify-between gap-4 border-b border-line px-4 py-3.5 sm:px-5',
+        className
+      )}
       {...rest}
     >
       {children}

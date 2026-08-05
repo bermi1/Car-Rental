@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Button, Icon, Input, Spinner } from '@rental/shared';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Button, Icon, Input } from '@rental/shared';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { LogoStacked } from '../components/Logo';
+import { Splash } from '../components/Splash';
 
 export function Login() {
   const { login, user, loading } = useAuth();
   const { theme, toggle } = useTheme();
+  const { language, setLanguage, t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,86 +20,146 @@ export function Login() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg">
-        <Spinner />
-      </div>
-    );
-  }
-  if (user) return <Navigate to={(location.state as any)?.from || '/'} replace />;
+  if (loading) return <Splash />;
+  if (user) return <Navigate to={(location.state as any)?.from || '/dashboard'} replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setSubmitting(true);
     try {
-      await login(email, password);
-      navigate((location.state as any)?.from || '/', { replace: true });
+      await login(email.trim(), password);
+      navigate((location.state as any)?.from || '/dashboard', { replace: true });
     } catch (err: any) {
-      setError(err.message || 'Could not sign in');
+      // Surface what the server actually said — "Invalid credentials" and
+      // "This account is not linked to a company" need different fixes, and a
+      // single generic message sends people hunting in the wrong place.
+      setError(err?.message || t('login.failed'));
     } finally {
       setSubmitting(false);
     }
   }
 
+  const sw = language === 'sw';
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
-      {/* Soft accent wash behind the card, kept subtle so it never fights the form. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[720px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl"
-      />
+    <div className="flex min-h-screen flex-col bg-bg lg:flex-row">
+      {/* Brand panel — collapses to a slim header on a phone */}
+      <div className="relative hidden overflow-hidden bg-accent lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:p-12">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-black/10 blur-3xl"
+        />
 
-      <button
-        onClick={toggle}
-        aria-label="Toggle theme"
-        className="absolute right-4 top-4 rounded-lg p-2 text-fg-muted transition-colors hover:bg-surface-sunken hover:text-fg"
-      >
-        <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
-      </button>
-
-      <div className="relative w-full max-w-[380px]">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-fg shadow-sm">
-            <Icon name="car" size={22} />
+        <Link to="/" className="relative flex items-center gap-2.5 text-white">
+          <Icon name="arrowLeft" size={16} />
+          <span className="text-[13px] font-medium">
+            {sw ? 'Rudi mwanzo' : 'Back to site'}
           </span>
-          <h1 className="text-xl font-semibold text-fg">Rental Console</h1>
-          <p className="mt-1 text-sm text-fg-muted">Sign in to manage fleet and bookings</p>
+        </Link>
+
+        <div className="relative">
+          <h2 className="max-w-sm text-3xl font-semibold leading-[1.2] tracking-[-0.02em] text-white">
+            {sw
+              ? 'Endesha biashara yako ya magari bila majedwali.'
+              : 'Run your rental business without the spreadsheets.'}
+          </h2>
+          <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/80">
+            {sw
+              ? 'Magari, ukodishaji, nyaraka, malipo na faini — vyote mahali pamoja.'
+              : 'Fleet, bookings, documents, payments and penalties — all in one place.'}
+          </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-md"
-        >
-          <Input
-            label="Email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@rental.co.tz"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
-          <Input
-            label="Password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <ErrorNotice message={error} />
-          <Button type="submit" size="lg" className="w-full" isLoading={submitting}>
-            Sign in
-          </Button>
-        </form>
-
-        <p className="mt-4 text-center text-xs text-fg-subtle">
-          Admin and staff sign in here — your role decides what you see.
+        <p className="relative text-xs text-white/60">
+          © {new Date().getFullYear()} Bermi Rentals System · Dar es Salaam
         </p>
+      </div>
+
+      {/* Form panel */}
+      <div className="relative flex flex-1 flex-col">
+        <div className="flex items-center justify-between px-5 py-4 sm:px-8">
+          <Link to="/" className="lg:invisible">
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted transition-colors hover:text-fg">
+              <Icon name="arrowLeft" size={15} />
+              {sw ? 'Mwanzo' : 'Home'}
+            </span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg bg-surface-sunken p-0.5">
+              {(['en', 'sw'] as const).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLanguage(code)}
+                  aria-label={code === 'en' ? 'English' : 'Kiswahili'}
+                  className={`rounded-md px-2 py-1 text-[11px] font-semibold uppercase transition-all ${
+                    language === code ? 'bg-surface text-fg shadow-xs' : 'text-fg-subtle hover:text-fg'
+                  }`}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="rounded-lg p-2 text-fg-muted transition-colors hover:bg-surface-sunken hover:text-fg"
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-1 items-center justify-center px-5 pb-12 sm:px-8">
+          <div className="w-full max-w-[380px]">
+            <div className="mb-8 flex justify-center">
+              <LogoStacked size={64} />
+            </div>
+
+            <h1 className="text-center text-xl font-semibold tracking-[-0.02em] text-fg">
+              {sw ? 'Karibu tena' : 'Welcome back'}
+            </h1>
+            <p className="mt-1.5 text-center text-sm text-fg-muted">{t('login.subtitle')}</p>
+
+            <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+              <Input
+                label={t('login.email')}
+                type="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="admin@rental.co.tz"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
+              <Input
+                label={t('login.password')}
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+
+              <ErrorNotice message={error} />
+
+              <Button type="submit" size="lg" className="w-full" isLoading={submitting}>
+                {t('login.submit')}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-xs leading-relaxed text-fg-subtle">{t('login.hint')}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

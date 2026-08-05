@@ -127,10 +127,10 @@ export function Reports() {
         title="Reports"
         description="Revenue, utilisation and booking trends."
         actions={
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Input label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             <Input label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} min={from || undefined} />
-            <Button variant="outline" icon="download" onClick={exportPdf} isLoading={exportingPdf}>
+            <Button variant="outline" icon="download" onClick={exportPdf} isLoading={exportingPdf} className="col-span-2 sm:col-auto">
               PDF
             </Button>
           </div>
@@ -163,7 +163,7 @@ export function Reports() {
         {data.revenue_by_vehicle.length === 0 ? (
           <EmptyState icon="chart" title="No data for this range" />
         ) : (
-          <Table>
+          <div className="-mx-1 overflow-x-auto px-1"><Table>
             <THead>
               <TR className="hover:bg-transparent">
                 <TH className="px-0">Vehicle</TH>
@@ -191,7 +191,7 @@ export function Reports() {
                 </TR>
               ))}
             </TBody>
-          </Table>
+          </Table></div>
         )}
       </Card>
 

@@ -10,14 +10,10 @@ import {
   Select,
   SkeletonTable,
   StatusBadge,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
+  DataTable,
   formatDate,
   initials,
+  type DataColumn,
 } from '@rental/shared';
 import type { StaffUser } from '@rental/shared';
 import { api, ApiError } from '../api/client';
@@ -65,6 +61,65 @@ export function StaffList() {
     }
   }
 
+  const columns: DataColumn<StaffUser>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      primary: true,
+      render: (s) => (
+        <span className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold text-fg-muted">
+            {initials(s.name)}
+          </span>
+          <span className="font-medium text-fg">
+            {s.name}
+            {s.id === user?.id && <span className="ml-1.5 text-xs font-normal text-fg-subtle">(you)</span>}
+          </span>
+        </span>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    { key: 'email', header: 'Email', secondary: true, render: (s) => s.email },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (s) => (
+        <StatusBadge
+          status={s.role === 'admin' ? 'confirmed' : 'pending'}
+          label={s.role === 'admin' ? 'Admin' : 'Staff'}
+        />
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      action: true,
+      render: (s) => (
+        <StatusBadge
+          status={s.is_active ? 'verified' : 'inactive'}
+          label={s.is_active ? 'Active' : 'Deactivated'}
+        />
+      ),
+    },
+    { key: 'added', header: 'Added', render: (s) => formatDate(s.created_at), className: 'whitespace-nowrap' },
+    {
+      key: 'actions',
+      header: '',
+      action: true,
+      render: (s) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={s.id === user?.id}
+          title={s.id === user?.id ? 'You cannot deactivate your own account' : undefined}
+          onClick={() => toggleActive(s)}
+        >
+          {s.is_active ? 'Deactivate' : 'Activate'}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <>
       <PageHeader
@@ -91,65 +146,7 @@ export function StaffList() {
                 {staff.length} account{staff.length === 1 ? '' : 's'}
               </p>
             </CardToolbar>
-            <Table>
-              <THead>
-                <TR className="hover:bg-transparent">
-                  <TH>Name</TH>
-                  <TH>Email</TH>
-                  <TH>Role</TH>
-                  <TH>Status</TH>
-                  <TH>Added</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {staff.map((s) => {
-                  const isSelf = s.id === user?.id;
-                  return (
-                    <TR key={s.id}>
-                      <TD>
-                        <span className="flex items-center gap-2.5">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold text-fg-muted">
-                            {initials(s.name)}
-                          </span>
-                          <span className="font-medium text-fg">
-                            {s.name}
-                            {isSelf && <span className="ml-1.5 text-xs font-normal text-fg-subtle">(you)</span>}
-                          </span>
-                        </span>
-                      </TD>
-                      <TD>{s.email}</TD>
-                      <TD>
-                        <StatusBadge
-                          status={s.role === 'admin' ? 'confirmed' : 'pending'}
-                          label={s.role === 'admin' ? 'Admin' : 'Staff'}
-                        />
-                      </TD>
-                      <TD>
-                        <StatusBadge
-                          status={s.is_active ? 'verified' : 'inactive'}
-                          label={s.is_active ? 'Active' : 'Deactivated'}
-                        />
-                      </TD>
-                      <TD className="whitespace-nowrap">{formatDate(s.created_at)}</TD>
-                      <TD>
-                        <div className="flex justify-end">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={isSelf}
-                            title={isSelf ? 'You cannot deactivate your own account' : undefined}
-                            onClick={() => toggleActive(s)}
-                          >
-                            {s.is_active ? 'Deactivate' : 'Activate'}
-                          </Button>
-                        </div>
-                      </TD>
-                    </TR>
-                  );
-                })}
-              </TBody>
-            </Table>
+            <DataTable columns={columns} rows={staff} rowKey={(s) => s.id} />
           </>
         )}
       </Card>
