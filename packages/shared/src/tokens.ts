@@ -5,6 +5,9 @@
  * Status colors are muted, not competing accents.
  */
 
+import type { BookingStatus } from './types';
+export type { BookingStatus };
+
 export const colors = {
   primary: {
     50: '#eef4ff',
@@ -101,14 +104,6 @@ export const typography = {
     bold: '700',
   },
 };
-
-export type BookingStatus =
-  | 'pending_documents'
-  | 'documents_submitted'
-  | 'confirmed'
-  | 'active'
-  | 'completed'
-  | 'cancelled';
 
 export const bookingStatusLabels: Record<BookingStatus, string> = {
   pending_documents: 'Pending Documents',

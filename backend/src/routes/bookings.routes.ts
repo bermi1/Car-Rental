@@ -3,7 +3,7 @@ import { query } from '../config/db';
 import { requireAuth, requireStaffOrAdmin, AuthedRequest } from '../middleware/auth';
 import { calculateQuote } from '../utils/pricing';
 import { logActivity } from '../services/activityLog';
-import { canConfirmBooking } from '../services/bookingWorkflow';
+import { canConfirmBooking, maybeAdvanceToDocumentsSubmitted } from '../services/bookingWorkflow';
 
 const router = Router();
 
@@ -149,6 +149,11 @@ router.post('/', requireAuth, async (req: AuthedRequest, res) => {
 
   await query("UPDATE vehicles SET status = 'booked' WHERE id = $1 AND status = 'available'", [vehicle_id]);
 
+  // A repeat client may already have the required documents on file (uploaded
+  // and/or verified against a previous booking) — check immediately so this
+  // booking isn't stuck at pending_documents waiting for a re-upload event.
+  await maybeAdvanceToDocumentsSubmitted(rows[0].id);
+
   if (isStaff) {
     await logActivity({
       actorStaffId: req.user!.sub,
@@ -159,7 +164,8 @@ router.post('/', requireAuth, async (req: AuthedRequest, res) => {
     });
   }
 
-  res.status(201).json(rows[0]);
+  const { rows: finalRows } = await query('SELECT * FROM bookings WHERE id = $1', [rows[0].id]);
+  res.status(201).json(finalRows[0]);
 });
 
 // Update booking fields (dates/pricing/regions) — staff/admin
