@@ -2,13 +2,20 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { radius, spacing, fontSize, statusColorFor, bookingStatusLabels, BookingStatus } from '../../theme/tokens';
 
-export function StatusBadge({ status }: { status: BookingStatus | string }) {
+export function StatusBadge({
+  status,
+  label,
+}: {
+  status: BookingStatus | string;
+  /** Overrides the derived text — used where the caller has a translated label. */
+  label?: string;
+}) {
   const color = statusColorFor(status);
-  const label = (bookingStatusLabels as any)[status] || status.replace(/_/g, ' ');
+  const text = label ?? (bookingStatusLabels as any)[status] ?? status.replace(/_/g, ' ');
   return (
     <View style={[styles.badge, { backgroundColor: color.bg }]}>
       <View style={[styles.dot, { backgroundColor: color.fg }]} />
-      <Text style={[styles.label, { color: color.fg }]}>{label}</Text>
+      <Text style={[styles.label, { color: color.fg }]}>{text}</Text>
     </View>
   );
 }

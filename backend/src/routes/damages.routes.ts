@@ -43,6 +43,9 @@ router.get('/booking/:bookingId', requireAuth, async (req: AuthedRequest, res) =
   res.json(rows);
 });
 
+/** Matches the damage_severity enum in the database. */
+const SEVERITIES = ['minor', 'moderate', 'severe'];
+
 /** Records a damage item and the penalty to be charged for it. */
 router.post(
   '/',
@@ -55,6 +58,9 @@ router.post(
       req.body;
     if (!booking_id || !description) {
       return res.status(400).json({ error: 'booking_id and description are required' });
+    }
+    if (severity && !SEVERITIES.includes(severity)) {
+      return res.status(400).json({ error: `severity must be one of: ${SEVERITIES.join(', ')}` });
     }
 
     const { rows: bookingRows } = await query(

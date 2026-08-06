@@ -6,15 +6,17 @@ import { Button, Card, Spinner, StatusBadge } from '../components/ui';
 import { colors, fontSize, spacing } from '../theme/tokens';
 import { api, fileUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useT } from '../i18n';
 import type { DocumentRecord } from '../types';
 
-const DOCUMENT_TYPES: { key: string; label: string }[] = [
-  { key: 'id_document', label: 'National ID / Passport' },
-  { key: 'driving_license', label: "Driving License" },
-];
+const DOCUMENT_TYPES = [
+  { key: 'id_document', labelKey: 'documents.idDocument' },
+  { key: 'driving_license', labelKey: 'documents.drivingLicense' },
+] as const;
 
 export function DocumentsScreen() {
   const { user } = useAuth();
+  const t = useT();
   const [documents, setDocuments] = useState<DocumentRecord[] | null>(null);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
@@ -53,8 +55,8 @@ export function DocumentsScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg }}>
-      <Text style={styles.title}>Documents</Text>
-      <Text style={styles.subtitle}>Upload your ID and driving license — required before any booking can be confirmed.</Text>
+      <Text style={styles.title}>{t('documents.title')}</Text>
+      <Text style={styles.subtitle}>{t('documents.subtitle')}</Text>
 
       {!documents ? (
         <Spinner />
@@ -64,19 +66,28 @@ export function DocumentsScreen() {
           return (
             <Card key={docType.key} style={{ marginTop: spacing.lg }}>
               <View style={styles.rowBetween}>
-                <Text style={styles.docLabel}>{docType.label}</Text>
-                {doc && <StatusBadge status={doc.verified ? 'confirmed' : 'pending_documents'} />}
+                <Text style={styles.docLabel}>{t(docType.labelKey)}</Text>
+                {doc && (
+                  <StatusBadge
+                    status={doc.verified ? 'confirmed' : 'pending_documents'}
+                    label={doc.verified ? t('documents.verified') : t('documents.awaiting')}
+                  />
+                )}
               </View>
               {doc ? (
                 <>
                   <Image source={{ uri: fileUrl(doc.file_path) }} style={styles.preview} />
-                  {doc.rejection_reason && <Text style={styles.rejection}>Rejected: {doc.rejection_reason}</Text>}
+                  {doc.rejection_reason && (
+                    <Text style={styles.rejection}>
+                      {t('documents.rejected')}: {doc.rejection_reason}
+                    </Text>
+                  )}
                 </>
               ) : (
-                <Text style={styles.notUploaded}>Not uploaded yet</Text>
+                <Text style={styles.notUploaded}>{t('common.notUploaded')}</Text>
               )}
               <Button
-                title={doc ? 'Re-upload' : 'Upload'}
+                title={doc ? t('common.reupload') : t('common.upload')}
                 variant="secondary"
                 onPress={() => handleUpload(docType.key)}
                 isLoading={uploadingType === docType.key}

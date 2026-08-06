@@ -190,8 +190,26 @@ router.post('/', requireAuth, async (req: AuthedRequest, res) => {
   res.status(201).json(finalRows[0]);
 });
 
+
+/**
+ * Confirms the booking belongs to the caller's company before a write.
+ *
+ * The status transitions below all take an id from the URL, so without this a
+ * staff member at one company could confirm, activate or complete another
+ * company's rental just by knowing the id. Answers 404 rather than 403 so the
+ * response doesn't confirm that someone else's booking exists.
+ */
+async function bookingInCompany(req: AuthedRequest, bookingId: string): Promise<boolean> {
+  if (req.user!.role === 'super_admin' && !req.companyId) return true;
+  const { rows } = await query('SELECT company_id FROM bookings WHERE id = $1', [bookingId]);
+  return Boolean(rows[0]) && rows[0].company_id === req.companyId;
+}
+
 // Update booking fields (dates/pricing/regions) — staff/admin
-router.put('/:id', requireAuth, requireStaffOrAdmin, async (req, res) => {
+router.put('/:id', requireAuth, resolveCompany, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+  if (!(await bookingInCompany(req, req.params.id))) {
+    return res.status(404).json({ error: 'Booking not found' });
+  }
   const fields = [
     'rental_type', 'start_date', 'end_date', 'pickup_region', 'dropoff_region',
     'quoted_currency', 'quoted_amount',
@@ -219,7 +237,10 @@ router.put('/:id', requireAuth, requireStaffOrAdmin, async (req, res) => {
 });
 
 // Status transitions
-router.post('/:id/confirm', requireAuth, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+router.post('/:id/confirm', requireAuth, resolveCompany, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+  if (!(await bookingInCompany(req, req.params.id))) {
+    return res.status(404).json({ error: 'Booking not found' });
+  }
   const gate = await canConfirmBooking(req.params.id);
   if (!gate.ok) return res.status(400).json({ error: gate.reason });
 
@@ -239,7 +260,10 @@ router.post('/:id/confirm', requireAuth, requireStaffOrAdmin, async (req: Authed
   res.json(rows[0]);
 });
 
-router.post('/:id/activate', requireAuth, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+router.post('/:id/activate', requireAuth, resolveCompany, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+  if (!(await bookingInCompany(req, req.params.id))) {
+    return res.status(404).json({ error: 'Booking not found' });
+  }
   const { rows } = await query(
     "UPDATE bookings SET status = 'active' WHERE id = $1 AND status = 'confirmed' RETURNING *",
     [req.params.id]
@@ -256,7 +280,10 @@ router.post('/:id/activate', requireAuth, requireStaffOrAdmin, async (req: Authe
   res.json(rows[0]);
 });
 
-router.post('/:id/complete', requireAuth, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+router.post('/:id/complete', requireAuth, resolveCompany, requireStaffOrAdmin, async (req: AuthedRequest, res) => {
+  if (!(await bookingInCompany(req, req.params.id))) {
+    return res.status(404).json({ error: 'Booking not found' });
+  }
   const { rows } = await query(
     "UPDATE bookings SET status = 'completed' WHERE id = $1 AND status = 'active' RETURNING *",
     [req.params.id]

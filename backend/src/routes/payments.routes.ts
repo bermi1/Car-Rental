@@ -158,7 +158,19 @@ router.put('/:id/confirm', requireAuth, requireStaffOrAdmin, requireCompany, asy
 });
 
 /** What a booking still owes, after confirmed payments and penalties. */
-router.get('/booking/:bookingId/balance', requireAuth, async (req, res) => {
+router.get('/booking/:bookingId/balance', requireAuth, async (req: AuthedRequest, res) => {
+  // Only the client on the booking, or staff inside the company that owns it.
+  const { rows: owner } = await query('SELECT client_id, company_id FROM bookings WHERE id = $1', [
+    req.params.bookingId,
+  ]);
+  if (!owner[0]) return res.status(404).json({ error: 'Booking not found' });
+  const allowed =
+    req.user!.role === 'super_admin' ||
+    (req.user!.role === 'client'
+      ? owner[0].client_id === req.user!.sub
+      : owner[0].company_id === req.user!.companyId);
+  if (!allowed) return res.status(403).json({ error: 'Forbidden' });
+
   const { rows } = await query(
     `SELECT b.quoted_amount, b.quoted_currency,
             COALESCE((SELECT sum(amount) FROM payments

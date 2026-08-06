@@ -124,7 +124,23 @@ the same machine. For a physical device use your machine's LAN IP
 Covers: home (current rental, past/upcoming summary), browsing available
 vehicles and requesting a booking, uploading ID and driving license documents,
 my bookings with the status stepper, contracts, linked devices, and profile
-editing.
+editing — plus the v2 flows:
+
+- **Quick registration.** Name, phone number and a password. Email is optional.
+  The phone number is the account handle, and 0712…, 255712… and +255 712… are
+  all accepted and stored the same way.
+- **Sign in with either** the phone number or the email.
+- **Payment.** The balance for a booking (rental total, charged penalties, what
+  has been confirmed paid) with a sheet to record a payment made by mobile
+  money, bank or cash and attach the receipt photo. There is no card gateway —
+  staff confirm the receipt from the console.
+- **Location sharing.** A switch on an active booking. Turning it on asks for
+  the OS location permission and sends a position every two minutes while the
+  app is open; the server drops anything outside an active, opted-in rental,
+  and turning it off stops collection immediately.
+- **Handover record.** The photos and walkaround video taken at pickup and
+  return, viewable from the booking.
+- **Kiswahili** throughout, switchable from the sign-in screen or Profile.
 
 ## Booking workflow
 
@@ -220,6 +236,29 @@ without it:
 Sign in as each company's admin to see the isolation: Serengeti has 5 vehicles
 and 6 bookings, Kilimanjaro has 2 and 0.
 
+Clients no longer need seeding to exist — anyone can register themselves from
+the phone app.
+
+## Accounts and registration
+
+Two different things create the two kinds of account:
+
+**Clients register themselves.** `POST /api/auth/client/register` takes a name,
+a phone number and a password; email is optional. A client account is
+platform-wide, not tied to one company — the company comes from the car they
+book. Sign-in accepts the phone number or the email as the identifier.
+
+**Staff accounts are created in the console**, never by self-registration:
+
+- A **platform owner** (`super_admin`) registers companies on the Companies
+  screen, then creates each company's first admin on the Staff screen, naming
+  the company the account belongs to.
+- A **company admin** adds their own staff on the same screen. They cannot see
+  or touch another company's accounts, and the company is taken from their
+  token — not from anything the browser sends.
+- An account with no company is rejected at creation, because it could sign in
+  but not open anything.
+
 ## Known gaps in this increment
 
 - **Kiswahili covers the navigation, shell and the new screens** (Payments,
@@ -227,9 +266,9 @@ and 6 bookings, Kilimanjaro has 2 and 0.
   Bookings, Fleet, Clients, Documents, Deposits, Reports, Staff — still render
   English body copy. The catalogue and `useT()` hook are in place; those pages
   need their strings swapped for keys.
-- **The mobile app has not been updated for the v2 flows.** The API endpoints
-  for client-side booking, document upload, receipt upload and location pings
-  exist and are exercised, but `mobile/` still targets the v1 API.
-- **Recording a payment from the console** isn't wired to a button yet; staff
-  confirm and reject from the Payments screen, and `POST /api/payments` accepts
-  a receipt upload from either side.
+- **WhatsApp OTP is not built.** Registration takes a phone number and trusts
+  it. `clients.phone_verified` exists in the schema ready for the verification
+  step, and is always `false` today.
+- **Location sharing is foreground-only.** The app pings while the client has
+  it open. No background task is registered, so a phone in a pocket with the
+  app closed reports nothing.

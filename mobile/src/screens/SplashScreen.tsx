@@ -35,7 +35,7 @@ export function SplashScreen({ message }: { message?: string }) {
       </Animated.View>
 
       <View style={styles.footer}>
-        <ActivityIndicator color="#817AFF" />
+        <ActivityIndicator color="#5A9EFF" />
         {message ? <Text style={styles.message}>{message}</Text> : null}
       </View>
     </View>
@@ -54,11 +54,11 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 22,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#0B63F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
-    shadowColor: '#4F46E5',
+    shadowColor: '#0B63F6',
     shadowOpacity: 0.45,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 8 },

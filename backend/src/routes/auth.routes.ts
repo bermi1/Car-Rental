@@ -3,6 +3,7 @@ import { query } from '../config/db';
 import { hashPassword, comparePassword } from '../utils/password';
 import { signToken } from '../utils/jwt';
 import { requireAuth, AuthedRequest } from '../middleware/auth';
+import { normalizePhone, looksLikePhone, isValidPhone } from '../utils/phone';
 
 const router = Router();
 
@@ -47,19 +48,51 @@ router.post('/staff/login', async (req, res) => {
 });
 
 // ---------- Client register ----------
+/**
+ * Open self-registration — anyone can create an account from the phone app.
+ *
+ * Name, phone and a password are all it takes. The phone number is the handle
+ * (everyone has one; not everyone has email), so email is optional and only
+ * has to be unique when it's given. Nothing here is company-scoped: a client
+ * account is platform-wide and can book from any company on the platform.
+ */
 router.post('/client/register', async (req, res) => {
-  const { full_name, phone, email, password, id_type, id_number } = req.body;
-  if (!full_name || !phone || !email || !password) {
-    return res.status(400).json({ error: 'full_name, phone, email, password are required' });
+  const { full_name, phone, email, password, id_type, id_number, language } = req.body;
+  if (!full_name || !phone || !password) {
+    return res.status(400).json({ error: 'Your name, phone number and a password are required' });
   }
-  const existing = await query('SELECT id FROM clients WHERE email = $1', [email]);
-  if (existing.rows.length) return res.status(409).json({ error: 'Email already registered' });
+  if (String(password).length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: 'Enter a valid phone number, for example 0712 345 678' });
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+
+  const phoneTaken = await query('SELECT id FROM clients WHERE phone = $1', [normalizedPhone]);
+  if (phoneTaken.rows.length) {
+    return res.status(409).json({ error: 'That phone number is already registered. Sign in instead.' });
+  }
+  if (normalizedEmail) {
+    const emailTaken = await query('SELECT id FROM clients WHERE lower(email) = $1', [normalizedEmail]);
+    if (emailTaken.rows.length) return res.status(409).json({ error: 'That email is already registered' });
+  }
 
   const password_hash = await hashPassword(password);
   const { rows } = await query(
-    `INSERT INTO clients (full_name, phone, email, id_type, id_number, password_hash)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [full_name, phone, email, id_type || 'national_id', id_number || null, password_hash]
+    `INSERT INTO clients (full_name, phone, email, id_type, id_number, password_hash, language)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [
+      String(full_name).trim(),
+      normalizedPhone,
+      normalizedEmail,
+      id_type || 'national_id',
+      id_number || null,
+      password_hash,
+      language === 'sw' ? 'sw' : 'en',
+    ]
   );
   const client = rows[0];
   const token = signToken({ sub: client.id, role: 'client', name: client.full_name, email: client.email });
@@ -67,11 +100,17 @@ router.post('/client/register', async (req, res) => {
 });
 
 // ---------- Client login (+ device linking) ----------
+/** Accepts either the phone number or the email as the identifier. */
 router.post('/client/login', async (req, res) => {
-  const { email, password, device_name, platform, device_identifier } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  const { identifier, email, password, device_name, platform, device_identifier } = req.body;
+  const handle = String(identifier || email || '').trim();
+  if (!handle || !password) {
+    return res.status(400).json({ error: 'Phone number (or email) and password are required' });
+  }
 
-  const { rows } = await query('SELECT * FROM clients WHERE email = $1', [email]);
+  const { rows } = looksLikePhone(handle)
+    ? await query('SELECT * FROM clients WHERE phone = $1', [normalizePhone(handle)])
+    : await query('SELECT * FROM clients WHERE lower(email) = $1', [handle.toLowerCase()]);
   const client = rows[0];
   if (!client) return res.status(401).json({ error: 'Invalid credentials' });
 

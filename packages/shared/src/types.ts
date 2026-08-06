@@ -1,6 +1,7 @@
 // Shared domain types across API, web-admin, web-staff, mobile.
 
-export type StaffRole = 'admin' | 'staff';
+/** `super_admin` is the platform owner — no company, sees every tenant. */
+export type StaffRole = 'super_admin' | 'admin' | 'staff';
 export type VehicleStatus = 'available' | 'booked' | 'in_service' | 'out_of_service';
 export type IdType = 'national_id' | 'passport' | 'drivers_license' | 'other';
 export type DevicePlatform = 'ios' | 'android';

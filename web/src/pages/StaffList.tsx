@@ -17,30 +17,48 @@ import {
 } from '@rental/shared';
 import type { StaffUser } from '@rental/shared';
 import { api, ApiError } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, type Company } from '../context/AuthContext';
 import { ErrorNotice } from '../components/ErrorNotice';
 
-const EMPTY_FORM = { name: '', email: '', password: '', role: 'staff' };
+const EMPTY_FORM = { name: '', email: '', password: '', role: 'staff', company_id: '' };
+
+/** The server sends the company alongside each account so the list can show it. */
+type StaffRow = StaffUser & { company_id: string | null; company_name: string | null };
 
 export function StaffList() {
-  const { user } = useAuth();
-  const [staff, setStaff] = useState<StaffUser[] | null>(null);
+  const { user, company, isSuperAdmin } = useAuth();
+  const [staff, setStaff] = useState<StaffRow[] | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // A super admin with no company switched in is looking at the whole
+  // platform, so the account they create has to name its own company.
+  const platformWide = isSuperAdmin && !company;
+
   function load() {
-    api.get<StaffUser[]>('/staff').then(setStaff);
+    api.get<StaffRow[]>('/staff').then(setStaff);
   }
-  useEffect(load, []);
+  useEffect(load, [company?.id]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    api.get<Company[]>('/companies').then(setCompanies).catch(() => setCompanies([]));
+  }, [isSuperAdmin]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError('');
     try {
-      await api.post('/staff', form);
+      await api.post('/staff', {
+        ...form,
+        // Ordinary admins never send this — the server takes their company
+        // from the token and ignores anything in the body.
+        company_id: form.role === 'super_admin' ? undefined : form.company_id || undefined,
+      });
       setForm(EMPTY_FORM);
       setShowForm(false);
       load();
@@ -51,7 +69,7 @@ export function StaffList() {
     }
   }
 
-  async function toggleActive(s: StaffUser) {
+  async function toggleActive(s: StaffRow) {
     setError('');
     try {
       await api.put(`/staff/${s.id}`, { is_active: !s.is_active });
@@ -61,7 +79,7 @@ export function StaffList() {
     }
   }
 
-  const columns: DataColumn<StaffUser>[] = [
+  const columns: DataColumn<StaffRow>[] = [
     {
       key: 'name',
       header: 'Name',
@@ -85,8 +103,8 @@ export function StaffList() {
       header: 'Role',
       render: (s) => (
         <StatusBadge
-          status={s.role === 'admin' ? 'confirmed' : 'pending'}
-          label={s.role === 'admin' ? 'Admin' : 'Staff'}
+          status={s.role === 'super_admin' ? 'active' : s.role === 'admin' ? 'confirmed' : 'pending'}
+          label={s.role === 'super_admin' ? 'Platform owner' : s.role === 'admin' ? 'Admin' : 'Staff'}
         />
       ),
     },
@@ -101,6 +119,16 @@ export function StaffList() {
         />
       ),
     },
+    ...(platformWide
+      ? [
+          {
+            key: 'company',
+            header: 'Company',
+            render: (s: StaffRow) => s.company_name ?? <span className="text-fg-subtle">Platform-wide</span>,
+            className: 'whitespace-nowrap',
+          } as DataColumn<StaffRow>,
+        ]
+      : []),
     { key: 'added', header: 'Added', render: (s) => formatDate(s.created_at), className: 'whitespace-nowrap' },
     {
       key: 'actions',
@@ -124,7 +152,11 @@ export function StaffList() {
     <>
       <PageHeader
         title="Staff Accounts"
-        description="Who can sign in to this console, and at what level."
+        description={
+          platformWide
+            ? 'Every console account on the platform, and the company it belongs to.'
+            : `Who can sign in to ${company?.name ?? 'this console'}, and at what level.`
+        }
         actions={
           <Button icon="plus" onClick={() => setShowForm(true)}>
             Add Staff
@@ -189,12 +221,31 @@ export function StaffList() {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
-            hint="Share it with them directly — it isn't emailed."
+            minLength={8}
+            hint="At least 8 characters. Share it with them directly — it isn't emailed."
           />
           <Select label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             <option value="staff">Staff — daily operations</option>
-            <option value="admin">Admin — full access</option>
+            <option value="admin">Admin — full access to their company</option>
+            {isSuperAdmin && <option value="super_admin">Platform owner — every company</option>}
           </Select>
+
+          {platformWide && form.role !== 'super_admin' && (
+            <Select
+              label="Company"
+              value={form.company_id}
+              onChange={(e) => setForm({ ...form, company_id: e.target.value })}
+              required
+              hint="An account without a company can sign in but cannot open anything."
+            >
+              <option value="">Choose a company…</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          )}
         </form>
       </Modal>
     </>

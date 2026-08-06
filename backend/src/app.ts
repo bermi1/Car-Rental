@@ -1,3 +1,7 @@
+// Side-effect import: teaches Express to route async rejections to the error
+// handler. Must stay above the route imports below — see the module comment.
+import './utils/asyncRoutes';
+
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env';
@@ -63,8 +67,26 @@ app.use('/api/ai', aiRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `Not found: ${req.method} ${req.path}` }));
 
+/**
+ * Turns the errors we can recognise into something the caller can act on.
+ * Postgres reports a bad enum or a malformed UUID as a data error, which is
+ * the client's mistake, not ours — answering 500 sends people hunting for a
+ * server fault that doesn't exist.
+ */
+const CLIENT_DATA_ERRORS: Record<string, string> = {
+  '22P02': 'One of the values sent is not one this field accepts.',
+  '23503': 'That references something which does not exist.',
+  '23505': 'That already exists.',
+  '23514': 'One of the values sent is outside the allowed range.',
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const friendly = err?.code && CLIENT_DATA_ERRORS[err.code];
+  if (friendly) {
+    console.warn(`Rejected request: ${err.code} ${err.message}`);
+    return res.status(400).json({ error: friendly });
+  }
   console.error(err);
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });

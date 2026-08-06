@@ -7,8 +7,10 @@ import {
   DataTable,
   EmptyState,
   Icon,
+  Input,
   Modal,
   PageHeader,
+  Select,
   SkeletonTable,
   StatusBadge,
   Tabs,
@@ -40,6 +42,16 @@ interface PaymentRow {
   plate_number: string;
 }
 
+/** Bookings a payment can be recorded against — anything not closed out. */
+interface OpenBooking {
+  id: string;
+  quoted_amount: number;
+  quoted_currency: string;
+  status: string;
+  client?: { full_name: string };
+  vehicle?: { make: string; model: string; plate_number: string };
+}
+
 export function Payments() {
   const t = useT();
   const [payments, setPayments] = useState<PaymentRow[] | null>(null);
@@ -49,11 +61,63 @@ export function Payments() {
   const [rejecting, setRejecting] = useState<PaymentRow | null>(null);
   const [reason, setReason] = useState('');
 
+  const [recording, setRecording] = useState(false);
+  const [bookings, setBookings] = useState<OpenBooking[]>([]);
+  const [form, setForm] = useState({
+    booking_id: '',
+    amount: '',
+    method: 'mobile_money',
+    reference: '',
+    note: '',
+  });
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
   function load() {
     setPayments(null);
     api.get<PaymentRow[]>(`/payments${status ? `?status=${status}` : ''}`).then(setPayments);
   }
   useEffect(load, [status]);
+
+  // Loaded once so the picker is ready the moment the modal opens.
+  useEffect(() => {
+    api
+      .get<OpenBooking[]>('/bookings')
+      .then((rows) => setBookings(rows.filter((b) => !['cancelled'].includes(b.status))))
+      .catch(() => setBookings([]));
+  }, []);
+
+  function openRecord() {
+    setForm({ booking_id: '', amount: '', method: 'mobile_money', reference: '', note: '' });
+    setReceipt(null);
+    setError('');
+    setRecording(true);
+  }
+
+  async function submitRecord(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const body = new FormData();
+      body.append('booking_id', form.booking_id);
+      body.append('amount', form.amount);
+      body.append('method', form.method);
+      const booking = bookings.find((b) => b.id === form.booking_id);
+      body.append('currency', booking?.quoted_currency || 'TZS');
+      if (form.reference.trim()) body.append('reference', form.reference.trim());
+      if (form.note.trim()) body.append('note', form.note.trim());
+      if (receipt) body.append('receipt', receipt);
+
+      await api.post('/payments', body);
+      setRecording(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not record the payment.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const filters = [
     { value: '', label: t('common.all') },
@@ -212,7 +276,15 @@ export function Payments() {
 
   return (
     <>
-      <PageHeader title={t('payments.title')} description={t('payments.description')} />
+      <PageHeader
+        title={t('payments.title')}
+        description={t('payments.description')}
+        actions={
+          <Button icon="plus" onClick={openRecord}>
+            {t('payments.record')}
+          </Button>
+        }
+      />
 
       <div className="mb-4 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
         <Tabs items={filters} value={status} onChange={setStatus} className="w-max sm:w-auto" />
@@ -242,6 +314,98 @@ export function Payments() {
           </>
         )}
       </Card>
+
+      <Modal
+        open={recording}
+        onClose={() => setRecording(false)}
+        title={t('payments.record')}
+        description={t('payments.recordHint')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRecording(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              form="record-payment"
+              isLoading={saving}
+              disabled={!form.booking_id || !form.amount}
+            >
+              {t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        {bookings.length === 0 ? (
+          <EmptyState icon="calendar" title={t('payments.noOpenBookings')} />
+        ) : (
+          <form id="record-payment" onSubmit={submitRecord} className="space-y-4">
+            <Select
+              label={t('payments.booking')}
+              value={form.booking_id}
+              onChange={(e) => {
+                const booking = bookings.find((b) => b.id === e.target.value);
+                setForm((f) => ({
+                  ...f,
+                  booking_id: e.target.value,
+                  // Pre-fill with the quote so the common case is one click.
+                  amount: booking ? String(Math.round(Number(booking.quoted_amount))) : f.amount,
+                }));
+              }}
+              required
+            >
+              <option value="">{t('payments.selectBooking')}</option>
+              {bookings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.client?.full_name} — {b.vehicle?.make} {b.vehicle?.model} ({b.vehicle?.plate_number})
+                </option>
+              ))}
+            </Select>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label={t('payments.amountPaid')}
+                type="number"
+                min="0"
+                step="1"
+                value={form.amount}
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                required
+              />
+              <Select
+                label={t('payments.method')}
+                value={form.method}
+                onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))}
+              >
+                <option value="mobile_money">{t('payments.mobileMoney')}</option>
+                <option value="bank_transfer">{t('payments.bankTransfer')}</option>
+                <option value="cash">{t('payments.cash')}</option>
+              </Select>
+            </div>
+
+            <Input
+              label={t('payments.reference')}
+              hint={t('common.optional')}
+              value={form.reference}
+              onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
+            />
+
+            <Input
+              label={t('payments.attachReceipt')}
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+            />
+
+            <Textarea
+              label={t('common.notes')}
+              rows={2}
+              value={form.note}
+              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+            />
+          </form>
+        )}
+      </Modal>
 
       <Modal
         open={Boolean(rejecting)}

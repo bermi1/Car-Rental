@@ -55,8 +55,16 @@ router.get('/', requireAuth, resolveCompany, async (req: AuthedRequest, res) => 
   res.json(rows);
 });
 
-router.get('/:id', requireAuth, async (req, res) => {
-  const { rows } = await query('SELECT * FROM vehicles WHERE id = $1', [req.params.id]);
+/**
+ * A single vehicle. Clients browse across the whole platform — that's the
+ * point of a marketplace — but staff only ever see their own company's cars,
+ * so one tenant can't read another's fleet by guessing an id.
+ */
+router.get('/:id', requireAuth, resolveCompany, async (req: AuthedRequest, res) => {
+  const staffScoped = req.user!.role !== 'client' && req.companyId;
+  const { rows } = staffScoped
+    ? await query('SELECT * FROM vehicles WHERE id = $1 AND company_id = $2', [req.params.id, req.companyId])
+    : await query('SELECT * FROM vehicles WHERE id = $1', [req.params.id]);
   if (!rows[0]) return res.status(404).json({ error: 'Vehicle not found' });
   res.json(rows[0]);
 });
@@ -81,7 +89,7 @@ router.post('/', requireAuth, requireCompanyAdmin, requireCompany, async (req: A
   res.status(201).json(rows[0]);
 });
 
-router.put('/:id', requireAuth, requireCompanyAdmin, async (req, res) => {
+router.put('/:id', requireAuth, resolveCompany, requireCompanyAdmin, requireCompany, async (req: AuthedRequest, res) => {
   const fields = ['make', 'model', 'plate_number', 'category', 'status', 'current_mileage', 'daily_rate_tzs'];
   const updates: string[] = [];
   const params: any[] = [];
@@ -92,17 +100,24 @@ router.put('/:id', requireAuth, requireCompanyAdmin, async (req, res) => {
     }
   }
   if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
-  params.push(req.params.id);
+  params.push(req.params.id, req.companyId);
+  // The company clause is what stops one tenant editing another's car by id.
   const { rows } = await query(
-    `UPDATE vehicles SET ${updates.join(', ')} WHERE id = $${params.length} RETURNING *`,
+    `UPDATE vehicles SET ${updates.join(', ')}
+      WHERE id = $${params.length - 1} AND company_id = $${params.length}
+      RETURNING *`,
     params
   );
   if (!rows[0]) return res.status(404).json({ error: 'Vehicle not found' });
   res.json(rows[0]);
 });
 
-router.delete('/:id', requireAuth, requireCompanyAdmin, async (req, res) => {
-  await query('DELETE FROM vehicles WHERE id = $1', [req.params.id]);
+router.delete('/:id', requireAuth, resolveCompany, requireCompanyAdmin, requireCompany, async (req: AuthedRequest, res) => {
+  const { rowCount } = await query('DELETE FROM vehicles WHERE id = $1 AND company_id = $2', [
+    req.params.id,
+    req.companyId,
+  ]);
+  if (!rowCount) return res.status(404).json({ error: 'Vehicle not found' });
   res.status(204).send();
 });
 

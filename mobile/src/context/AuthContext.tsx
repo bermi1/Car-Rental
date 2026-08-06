@@ -8,7 +8,8 @@ export interface ClientUser {
   id: string;
   full_name: string;
   phone: string;
-  email: string;
+  /** Optional — the phone number is the account handle. */
+  email: string | null;
   id_type: string;
   id_number: string | null;
   id_document_file: string | null;
@@ -19,8 +20,15 @@ export interface ClientUser {
 interface AuthContextValue {
   user: ClientUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (input: { full_name: string; phone: string; email: string; password: string }) => Promise<void>;
+  /** Identifier is the client's phone number or their email. */
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (input: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    password: string;
+    language?: 'en' | 'sw';
+  }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -53,13 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(identifier: string, password: string) {
     const deviceIdentifier = await getDeviceIdentifier();
     const platform = Platform.OS === 'ios' ? 'ios' : 'android';
     const deviceName = Device.deviceName || (platform === 'ios' ? "iPhone" : 'Android device');
 
     const res = await api.post<{ token: string; user: ClientUser }>('/auth/client/login', {
-      email,
+      identifier,
       password,
       device_name: deviceName,
       platform,
@@ -69,12 +77,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.user);
   }
 
-  async function register(input: { full_name: string; phone: string; email: string; password: string }) {
+  async function register(input: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    password: string;
+    language?: 'en' | 'sw';
+  }) {
     const res = await api.post<{ token: string; user: ClientUser }>('/auth/client/register', input);
     await setToken(res.token);
     setUser(res.user);
-    // Immediately follow with a login so the device gets linked too.
-    await login(input.email, input.password);
+    // Immediately follow with a login so the device gets linked too. The phone
+    // is the handle, and it's the one field registration always has.
+    await login(input.phone, input.password);
   }
 
   async function logout() {

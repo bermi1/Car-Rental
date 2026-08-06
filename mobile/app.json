@@ -7,7 +7,7 @@
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
     "backgroundColor": "#0B0C10",
-    "primaryColor": "#4F46E5",
+    "primaryColor": "#0B63F6",
     "splash": {
       "backgroundColor": "#0B0C10",
       "resizeMode": "contain"
@@ -17,17 +17,31 @@
       "bundleIdentifier": "co.tz.bermirentals.client",
       "splash": {
         "backgroundColor": "#0B0C10"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Bermi Rentals shares the car's position with the rental company while your rental is active, so they can reach you if you need help. You can turn this off at any time.",
+        "NSPhotoLibraryUsageDescription": "Bermi Rentals needs access to your photos so you can upload your ID, driving license and payment receipts.",
+        "NSCameraUsageDescription": "Bermi Rentals uses the camera so you can photograph your documents and payment receipts."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#4F46E5"
+        "backgroundColor": "#0B63F6"
       },
       "package": "co.tz.bermirentals.client",
       "splash": {
         "backgroundColor": "#0B0C10"
-      }
+      },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Bermi Rentals shares the car's position with the rental company while your rental is active."
+        }
+      ]
+    ],
     "extra": {
       "apiBaseUrl": "http://localhost:4000"
     }

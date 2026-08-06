@@ -4,9 +4,10 @@
  * in sync with the shared token file if the palette changes.
  */
 export const colors = {
+  /** The Bermi Rentals brand blue — matches --accent in the console theme. */
   primary: {
-    50: '#eef4ff', 100: '#dce8ff', 200: '#b8d0ff', 300: '#8fb3ff', 400: '#5f8fff',
-    500: '#3366ff', 600: '#274fd1', 700: '#1e3ca3', 800: '#182f7e', 900: '#132666',
+    50: '#eef4ff', 100: '#dbe8ff', 200: '#b8d1ff', 300: '#85b2ff', 400: '#4a8dff',
+    500: '#0b63f6', 600: '#0854d6', 700: '#0b3fa0', 800: '#0e357f', 900: '#102d66',
   },
   neutral: {
     50: '#f7f7f8', 100: '#eeeef0', 200: '#dcdce1', 300: '#c2c2c9', 400: '#9d9da7',

@@ -19,8 +19,20 @@ to set — the console just calls `/api/...`.
 ## 0. Database (already provisioned)
 
 Supabase project **car-rental-platform** (`okqcbatnnkkitrbaeqrm`, eu-west-1)
-holds the schema and seed data — 5 vehicles, 6 bookings, 3 clients, 2 staff
-users. You do not need to migrate or seed again.
+holds the schema and seed data. Migrations `002_platform_v2` (multi-tenancy,
+handover, damages, payments, GPS) and `003_client_registration` (phone-based
+client sign-up) have both been applied there. You do not need to migrate or
+seed again.
+
+### Sign-in accounts on that database
+
+| Role | Email | Password |
+|---|---|---|
+| Platform owner (every company) | `owner@bermirentals.co.tz` | `BermiOwner2026!` |
+| Company admin — Bermi Rentals | `admin@bermirentals.co.tz` | `BermiAdmin2026!` |
+
+Change both passwords from the Staff screen once you are in. Clients do not
+appear here — they register themselves from the phone app.
 
 Get the connection string from **Project Settings → Database → Connection
 string → URI**, and use the **pooled** connection (host

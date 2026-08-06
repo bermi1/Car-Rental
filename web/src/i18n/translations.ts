@@ -91,6 +91,16 @@ export const en = {
   'payments.empty': 'No payments recorded',
   'payments.emptyHint': 'Payments appear here once staff or clients record them.',
   'payments.totalConfirmed': 'Confirmed total',
+  'payments.booking': 'Booking',
+  'payments.selectBooking': 'Choose a booking…',
+  'payments.amountPaid': 'Amount paid',
+  'payments.attachReceipt': 'Receipt image or PDF',
+  'payments.recordHint':
+    'There is no gateway — record what the client paid by mobile money, bank or cash and attach the evidence.',
+  'payments.mobileMoney': 'Mobile money',
+  'payments.bankTransfer': 'Bank transfer',
+  'payments.cash': 'Cash',
+  'payments.noOpenBookings': 'No open bookings to record a payment against.',
 
   // Damages
   'damages.title': 'Damages & Penalties',
@@ -267,6 +277,16 @@ export const sw: Translations = {
   'payments.empty': 'Hakuna malipo yaliyorekodiwa',
   'payments.emptyHint': 'Malipo yataonekana hapa yakishawekwa na wafanyakazi au wateja.',
   'payments.totalConfirmed': 'Jumla iliyothibitishwa',
+  'payments.booking': 'Ukodishaji',
+  'payments.selectBooking': 'Chagua ukodishaji…',
+  'payments.amountPaid': 'Kiasi kilicholipwa',
+  'payments.attachReceipt': 'Picha ya risiti au PDF',
+  'payments.recordHint':
+    'Hakuna mfumo wa kadi — rekodi kile mteja alicholipa kwa simu, benki au taslimu na ambatisha ushahidi.',
+  'payments.mobileMoney': 'Simu (M-Pesa, Tigo Pesa)',
+  'payments.bankTransfer': 'Benki',
+  'payments.cash': 'Fedha taslimu',
+  'payments.noOpenBookings': 'Hakuna ukodishaji ulio wazi wa kurekodi malipo.',
 
   // Damages
   'damages.title': 'Uharibifu na Faini',
