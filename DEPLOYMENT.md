@@ -90,6 +90,33 @@ Creates two companies, five vehicles, a booking in each status, and sample
 staff and client logins. Useful for a demo, not something to run against a
 database you are actually using.
 
+### Test accounts on the existing Supabase database
+
+The Supabase project `okqcbatnnkkitrbaeqrm` is already migrated and holds two
+companies, so tenant isolation is visible: **Bermi Rentals** (5 vehicles) and
+**Coastal Car Hire** (2).
+
+| Role | Name | Email | Password |
+|---|---|---|---|
+| Platform owner | Bermi Owner | `owner@bermirentals.co.tz` | `BermiOwner2026!` |
+| Admin — Bermi Rentals | Amina Kessy | `admin@bermirentals.co.tz` | `BermiAdmin2026!` |
+| Staff — Bermi Rentals | John Mwakalinga | `staff@bermirentals.co.tz` | `BermiStaff2026!` |
+| Admin — Coastal Car Hire | Joseph Mollel | `admin@coastalhire.co.tz` | `BermiCoast2026!` |
+| Staff — Coastal Car Hire | Zainabu Hamisi | `staff@coastalhire.co.tz` | `BermiCoast2026!` |
+
+Client app — sign in with the phone number **or** the email:
+
+| Name | Phone | Email | Password |
+|---|---|---|---|
+| Neema Shirima | `0712 345 678` | `neema@example.co.tz` | `Client2026!` |
+
+Sign in as each company's admin to see the isolation: Bermi sees 5 vehicles,
+Coastal sees 2, neither sees the other's. The platform owner sees both and
+switches between them from the company picker.
+
+These are test credentials written down in a public document. Change them from
+the Staff screen before the system carries anything real.
+
 ## 1. Create the project
 
 New Project → import this repository, and leave every build setting as
