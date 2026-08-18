@@ -26,6 +26,9 @@ import damageRoutes from './routes/damages.routes';
 import paymentRoutes from './routes/payments.routes';
 import trackingRoutes from './routes/tracking.routes';
 import aiRoutes from './routes/ai.routes';
+import expenseRoutes from './routes/expenses.routes';
+import repairRoutes from './routes/repairs.routes';
+import catalogueRoutes from './routes/catalogue.routes';
 
 const app = express();
 
@@ -84,6 +87,10 @@ app.use('/api/damages', damageRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/tracking', trackingRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/repairs', repairRoutes);
+// Public: no token. See the module comment for what it deliberately omits.
+app.use('/api/catalogue', catalogueRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `Not found: ${req.method} ${req.path}` }));
 

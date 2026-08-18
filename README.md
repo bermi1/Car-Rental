@@ -257,6 +257,50 @@ and 6 bookings, Kilimanjaro has 2 and 0.
 Clients no longer need seeding to exist — anyone can register themselves from
 the phone app.
 
+## Who does what
+
+Three levels, and each one only sees its own business.
+
+### Platform admin
+Runs the platform itself. Registers rental companies, creates each company's
+**owner** account, and can look into any company. Belongs to no company —
+that's what makes the "see everything" view legitimate rather than a leak.
+
+### Owner
+Runs one rental company:
+
+- Lists cars with everything a client needs to decide — year, seats,
+  transmission, fuel, a description and a condition note.
+- Invites staff and sets whether each one is staff or a second owner.
+- Records **expenses** — fuel, insurance, licensing, tyres, salaries, rent —
+  against the company or against one car, so "what does this vehicle actually
+  cost us" has an answer.
+- Opens and closes **repairs**. A car goes off the road when a repair opens and
+  comes back when it closes, and closing one with a cost writes the expense
+  itself so the figure is never typed twice.
+- Shares a **public catalogue** — a link and a printable QR code that puts
+  clients straight onto that company's cars.
+- Watches one dashboard.
+
+### Staff
+The data entry: handovers and returns, verifying documents and payments,
+recording damage, opening repairs, logging expenses. They can add cars too.
+They never see another company, and never the platform.
+
+## The public catalogue
+
+Every company gets a page at `/c/<slug>` — that's what its QR code points at.
+No sign-in, no app. A client scans it, sees that company's cars with prices and
+condition notes, picks dates, gets a price, and sends the request through.
+
+It is deliberately narrow: the endpoint selects only what a company would print
+on a flyer. No plate numbers, no mileage, no internal notes — a public page
+should not expose the fleet's operational detail to anyone who guesses a slug.
+An owner can also keep a car off the page without taking it out of service.
+
+Find the link and the QR code on **Settings**. The QR is generated in the
+browser, so nothing about the company is sent to a QR service.
+
 ## Accounts and registration
 
 Two different things create the two kinds of account:

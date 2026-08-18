@@ -104,7 +104,7 @@ export function StaffList() {
       render: (s) => (
         <StatusBadge
           status={s.role === 'super_admin' ? 'active' : s.role === 'admin' ? 'confirmed' : 'pending'}
-          label={s.role === 'super_admin' ? 'Platform owner' : s.role === 'admin' ? 'Admin' : 'Staff'}
+          label={s.role === 'super_admin' ? 'Platform admin' : s.role === 'admin' ? 'Owner' : 'Staff'}
         />
       ),
     },
@@ -151,15 +151,15 @@ export function StaffList() {
   return (
     <>
       <PageHeader
-        title="Staff Accounts"
+        title="People"
         description={
           platformWide
             ? 'Every console account on the platform, and the company it belongs to.'
-            : `Who can sign in to ${company?.name ?? 'this console'}, and at what level.`
+            : `The owner and staff who can sign in to ${company?.name ?? 'this company'}.`
         }
         actions={
           <Button icon="plus" onClick={() => setShowForm(true)}>
-            Add Staff
+            Add Person
           </Button>
         }
       />
@@ -186,7 +186,7 @@ export function StaffList() {
       <Modal
         open={showForm}
         onClose={() => setShowForm(false)}
-        title="Add staff account"
+        title="Add someone to the team"
         description="They can sign in immediately with these credentials."
         footer={
           <>
@@ -225,9 +225,9 @@ export function StaffList() {
             hint="At least 8 characters. Share it with them directly — it isn't emailed."
           />
           <Select label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="staff">Staff — daily operations</option>
-            <option value="admin">Admin — full access to their company</option>
-            {isSuperAdmin && <option value="super_admin">Platform owner — every company</option>}
+            <option value="staff">Staff — data entry and daily operations</option>
+            <option value="admin">Owner — runs the company: cars, staff, money</option>
+            {isSuperAdmin && <option value="super_admin">Platform admin — every company</option>}
           </Select>
 
           {platformWide && form.role !== 'super_admin' && (

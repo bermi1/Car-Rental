@@ -39,6 +39,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/damages', labelKey: 'nav.damages', icon: 'alert' },
       { to: '/deposits', labelKey: 'nav.deposits', icon: 'wallet' },
       { to: '/fleet', labelKey: 'nav.fleet', icon: 'car' },
+      { to: '/repairs', labelKey: 'nav.repairs', icon: 'settings' },
+      { to: '/expenses', labelKey: 'nav.expenses', icon: 'wallet' },
       { to: '/clients', labelKey: 'nav.clients', icon: 'users' },
       { to: '/my-activity', labelKey: 'nav.myActivity', icon: 'clock' },
     ],

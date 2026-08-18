@@ -10,6 +10,7 @@ import {
   Modal,
   PageHeader,
   SearchInput,
+  Select,
   SkeletonTable,
   StatusBadge,
   Tabs,
@@ -24,10 +25,22 @@ import { ErrorNotice } from '../../components/ErrorNotice';
 
 const EMPTY_FORM = { make: '', model: '', plate_number: '', category: '', daily_rate_tzs: '' };
 
+/**
+ * The states a car moves between, and what each one means to the desk.
+ * These match the vehicle_status enum — the API rejects anything else.
+ */
+const VEHICLE_STATUSES = [
+  { value: 'available', label: 'Available' },
+  { value: 'booked', label: 'Booked' },
+  { value: 'in_service', label: 'In service / repair' },
+  { value: 'out_of_service', label: 'Out of service' },
+] as const;
+
 export function FleetList() {
   const t = useT();
   const { isAdmin } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
 
@@ -41,6 +54,30 @@ export function FleetList() {
     api.get<Vehicle[]>(`/vehicles${status ? `?status=${status}` : ''}`).then(setVehicles);
   }
   useEffect(load, [status]);
+
+  /**
+   * Applies the new state immediately and puts it back if the server refuses —
+   * the desk shouldn't wait on a round trip to see a change it just made.
+   */
+  async function changeStatus(vehicle: Vehicle, next: string) {
+    if (next === vehicle.status) return;
+    const previous = vehicle.status;
+    setStatusBusyId(vehicle.id);
+    setError('');
+    setVehicles((list) =>
+      (list ?? []).map((v) => (v.id === vehicle.id ? { ...v, status: next as Vehicle['status'] } : v))
+    );
+    try {
+      await api.put(`/vehicles/${vehicle.id}`, { status: next });
+    } catch (err) {
+      setVehicles((list) =>
+        (list ?? []).map((v) => (v.id === vehicle.id ? { ...v, status: previous } : v))
+      );
+      setError(err instanceof ApiError ? err.message : 'Could not change the status.');
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
 
   const filters = [
     { value: '', label: t('common.all') },
@@ -106,7 +143,24 @@ export function FleetList() {
       key: 'status',
       header: t('common.status'),
       action: true,
-      render: (v) => <StatusBadge status={v.status} />,
+      // Changing a car's state is the single most frequent thing at the desk,
+      // so it happens here rather than two screens deep.
+      render: (v) => (
+        <Select
+          aria-label={`Status for ${v.make} ${v.model}`}
+          value={v.status}
+          disabled={statusBusyId === v.id}
+          onChange={(e) => changeStatus(v, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="min-w-[9.5rem]"
+        >
+          {VEHICLE_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </Select>
+      ),
     },
   ];
 

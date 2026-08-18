@@ -7,6 +7,9 @@ import { RequireAuth, RequireAdmin, RequireSuperAdmin } from './components/guard
 import { Shell } from './components/Shell';
 
 import { Landing } from './pages/Landing';
+import { Catalogue } from './pages/Catalogue';
+import { Expenses } from './pages/Expenses';
+import { Repairs } from './pages/Repairs';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { BookingsList } from './pages/Bookings/BookingsList';
@@ -42,6 +45,8 @@ export function App() {
               {/* Public marketing page. Signed-in users are bounced to /dashboard. */}
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
+              {/* Public: what a company's QR code points at. No sign-in. */}
+              <Route path="/c/:slug" element={<Catalogue />} />
               <Route
                 element={
                   <RequireAuth>
@@ -61,6 +66,8 @@ export function App() {
                 <Route path="/damages" element={<Damages />} />
                 <Route path="/deposits" element={<DepositsList />} />
                 <Route path="/fleet" element={<FleetList />} />
+                <Route path="/repairs" element={<Repairs />} />
+                <Route path="/expenses" element={<Expenses />} />
                 <Route path="/fleet/:id" element={<FleetDetail />} />
                 <Route path="/clients" element={<ClientsList />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />

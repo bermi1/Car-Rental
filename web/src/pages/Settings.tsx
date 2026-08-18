@@ -16,6 +16,8 @@ import {
 import type { SystemSettings } from '@rental/shared';
 import { api, ApiError } from '../api/client';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { CatalogueShare } from '../components/CatalogueShare';
+import { useAuth } from '../context/AuthContext';
 
 interface SeasonalPricing {
   id: string;
@@ -29,6 +31,7 @@ interface SeasonalPricing {
 const EMPTY_SEASON = { name: '', category: '', start_date: '', end_date: '', rate_multiplier: '1.2' };
 
 export function Settings() {
+  const { company } = useAuth();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [rate, setRate] = useState('');
   const [defaultRate, setDefaultRate] = useState('');
@@ -104,9 +107,15 @@ export function Settings() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Settings" description="Pricing rules and the exchange rate used for quotes." />
+      <PageHeader title="Settings" description="Pricing rules, quotes, and your public catalogue." />
 
       <ErrorNotice message={error} />
+
+      {company && (
+        <div className="mb-6">
+          <CatalogueShare slug={company.slug} companyName={company.name} />
+        </div>
+      )}
 
       <Card className="mt-4">
         <CardHeader>
