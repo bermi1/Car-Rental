@@ -4,7 +4,7 @@ import './utils/asyncRoutes';
 
 import express from 'express';
 import cors from 'cors';
-import { env } from './config/env';
+import { env, configError } from './config/env';
 import { query } from './config/db';
 import { uploadsRoot } from './services/storage';
 
@@ -35,15 +35,35 @@ app.use('/uploads', express.static(uploadsRoot));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Reports database reachability too, so a misconfigured DATABASE_URL shows up
-// here rather than as a failure on every individual endpoint.
+/**
+ * The endpoint to open first when a deployment misbehaves. It answers even
+ * when the deployment is misconfigured, and says which of the three things is
+ * wrong: the variables, the database, or neither.
+ */
 app.get('/api/health', async (_req, res) => {
+  const problem = configError();
+  if (problem) {
+    return res.status(503).json({ ok: false, configured: false, error: problem });
+  }
   try {
     await query('select 1');
-    res.json({ ok: true, database: 'connected' });
+    res.json({ ok: true, configured: true, database: 'connected' });
   } catch (err: any) {
-    res.status(503).json({ ok: false, database: 'unreachable', error: err.message });
+    res.status(503).json({ ok: false, configured: true, database: 'unreachable', error: err.message });
   }
+});
+
+/**
+ * Nothing else is worth attempting without configuration — a query would fail
+ * with a connection error that says nothing about the cause. Refuse with the
+ * reason instead, so a failed sign-in explains itself.
+ */
+app.use('/api', (req, res, next) => {
+  const problem = configError();
+  if (problem && req.path !== '/health') {
+    return res.status(503).json({ error: problem });
+  }
+  next();
 });
 
 app.use('/api/auth', authRoutes);
