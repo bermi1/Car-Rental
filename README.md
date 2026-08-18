@@ -70,18 +70,36 @@ package, so nothing is fetched at runtime.
 npm install       # once, at the repo root — sets up the workspace links
 ```
 
-Database:
+Database — any Postgres 14+, local or hosted:
 
 ```bash
 createdb rentaldb
 cd backend
 cp .env.example .env          # edit DATABASE_URL if needed
-npx tsx src/db/migrate.ts     # applies database/schema.sql
-npx tsx src/db/seed.ts        # sample fleet, staff, clients, bookings
+cd ..
+
+npm run migrate               # base schema + every migration, in order
+npm run seed                  # sample fleet, staff, clients, bookings
 ```
 
-Both scripts resolve `database/schema.sql` relative to the working directory,
-so run them from `backend/`.
+`migrate` is safe to re-run: it records what it has applied in
+`schema_migrations`, and every migration is written to be idempotent.
+
+There is no provider SDK anywhere in the code — the app talks to Postgres
+through `pg` and nothing else. Neon, Railway, Render, Aiven, Vercel Postgres,
+Supabase or your own server all work by changing `DATABASE_URL`. Anything that
+is not localhost is connected to over TLS automatically, so a hosted
+connection string works as pasted.
+
+To start a real (non-demo) database instead of seeding it, create the first
+platform owner and do the rest from the console:
+
+```bash
+npm run create-owner -- --email you@yourcompany.co.tz --password 'a good one'
+```
+
+That is the only way a platform owner is created — a fresh database has no
+other way in, since staff accounts are made from inside the console.
 
 Then, from the repo root, in two terminals:
 

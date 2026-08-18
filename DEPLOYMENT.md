@@ -16,29 +16,79 @@ everything else to `index.html` so client-side routing works on refresh.
 Because they share an origin there is no CORS to configure and no API base URL
 to set — the console just calls `/api/...`.
 
-## 0. Database (already provisioned)
+## 0. Database
 
-Supabase project **car-rental-platform** (`okqcbatnnkkitrbaeqrm`, eu-west-1)
-holds the schema and seed data. Migrations `002_platform_v2` (multi-tenancy,
-handover, damages, payments, GPS) and `003_client_registration` (phone-based
-client sign-up) have both been applied there. You do not need to migrate or
-seed again.
+The app speaks plain Postgres through `pg` — no provider SDK, no vendor
+extensions, no row-level-security policies. Any Postgres 14 or newer works, and
+switching provider means changing `DATABASE_URL` and nothing else.
 
-### Sign-in accounts on that database
+### Picking one
 
-| Role | Email | Password |
-|---|---|---|
-| Platform owner (every company) | `owner@bermirentals.co.tz` | `BermiOwner2026!` |
-| Company admin — Bermi Rentals | `admin@bermirentals.co.tz` | `BermiAdmin2026!` |
+**Neon** (neon.tech) is the recommendation for this app: the free tier needs no
+card, gives you a full Postgres 17 database, and hands out a pooled connection
+string — which is what a serverless deployment needs. Create a project, then
+copy the connection string marked **Pooled connection**.
 
-Change both passwords from the Staff screen once you are in. Clients do not
-appear here — they register themselves from the phone app.
+These also work unchanged:
 
-Get the connection string from **Project Settings → Database → Connection
-string → URI**, and use the **pooled** connection (host
-`...pooler.supabase.com`, port `6543`). Serverless functions open many
-short-lived connections and will exhaust the direct connection limit otherwise.
-SSL is enabled automatically for Supabase hosts (`backend/src/config/db.ts`).
+| Provider | Free tier | Notes |
+| --- | --- | --- |
+| **Neon** | yes, no card | Pooled endpoint built in. Best fit here. |
+| **Vercel Postgres** | yes | Neon underneath; sets `DATABASE_URL` for you. |
+| **Render** | 90 days, then paid | Use the *External* connection string. |
+| **Aiven** | yes | Plenty of connections; slower cold start. |
+| **Supabase** | 2 active projects | Use the **pooled** URI, port `6543`. |
+| Your own Postgres | — | Works too; make sure TLS is on if it is remote. |
+
+Whatever you choose, prefer the **pooled** connection string where the provider
+offers one. Serverless functions open many short-lived connections and will
+exhaust a direct-connection limit. `backend/src/config/db.ts` also caps each
+function instance at one connection when running on Vercel.
+
+TLS is handled for you: any host that is not localhost is connected to over
+TLS automatically, so you do not need `?sslmode=require` in the URL (though it
+does no harm).
+
+### Setting it up
+
+Point the two commands at the new database and it goes from empty to usable:
+
+```bash
+export DATABASE_URL='postgres://...'   # your new connection string
+export JWT_SECRET='any long random string'
+
+npm run migrate        # base schema + every migration, in order
+npm run create-owner -- --email you@yourcompany.co.tz --password 'a good one'
+```
+
+`migrate` is safe to re-run — it records what it has applied in
+`schema_migrations` and every migration is written to be idempotent.
+
+`create-owner` is the bootstrap step, and the only place a platform owner can
+be created without already being one. A fresh database has no way in
+otherwise: staff accounts are created from inside the console, and you need an
+account to open the console. Run it again with the same email to reset that
+account's password.
+
+Then sign in at `/login` and:
+
+1. Register your companies on the **Companies** screen.
+2. Create each company's first admin on the **Staff** screen, choosing the
+   company it belongs to.
+3. That admin adds their own staff and lists their cars.
+
+Clients never appear in any of this — they register themselves from the phone
+app with a name, a phone number and a password.
+
+### Sample data (optional)
+
+```bash
+npm run seed
+```
+
+Creates two companies, five vehicles, a booking in each status, and sample
+staff and client logins. Useful for a demo, not something to run against a
+database you are actually using.
 
 ## 1. Create the project
 
@@ -56,7 +106,7 @@ detected. Vercel reads them from `vercel.json`:
 
 | Name | Value |
 | --- | --- |
-| `DATABASE_URL` | the pooled Supabase URI from step 0 |
+| `DATABASE_URL` | the pooled connection string from step 0 |
 | `JWT_SECRET` | a long random string |
 
 Both are required. The API refuses to start without them rather than silently
@@ -136,21 +186,32 @@ the next request.
 
 Seed data is unaffected, since those rows only store paths. But **uploads made
 against the deployed API will not survive.** The fix is to swap
-`LocalDiskStorage` for an object-storage driver (Supabase Storage or S3); the
+`LocalDiskStorage` for an object-storage driver (S3, Cloudflare R2, or your
+provider's own object storage); the
 `StorageDriver` interface exists so that change stays inside that one file.
 
 ## Security note
 
-All 13 tables have Row Level Security disabled. It does not affect this
-application — the API connects to Postgres directly as the database user, not
-through the Supabase anon key — but if that anon key is ever used from a
-client, every row is readable and writable by anyone holding it. Enable RLS
-with policies before exposing the key:
+Tenant isolation is enforced in the API, not in the database. Every query that
+touches company data is scoped by `req.companyId`, which comes from the signed
+token and never from anything the browser sends
+(`backend/src/middleware/auth.ts`). Row Level Security is off on all 13 tables.
+
+That is fine as long as the only thing talking to Postgres is this API, using
+the database user in `DATABASE_URL`. It stops being fine the moment any
+credential reaches a browser — a Supabase anon key, a PostgREST endpoint, a
+direct connection string in frontend code. Anyone holding it could read and
+write every row of every company. If you ever expose one, enable RLS with
+policies first:
 
 ```sql
 ALTER TABLE public.staff_users ENABLE ROW LEVEL SECURITY;
 -- ...and the remaining 12 tables
 ```
+
+Keep `DATABASE_URL` server-side only. It belongs in the deployment's
+environment variables and nowhere else — never in `web/`, never in `mobile/`,
+never committed.
 
 Enabling RLS without policies blocks all access, so add the policies in the
 same change.
