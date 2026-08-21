@@ -74,7 +74,7 @@ router.post(
     const photos: string[] = [];
     for (const file of files) {
       const rel = `repairs/${vehicle_id}-${Date.now()}-${file.originalname}`;
-      await storage.save(file.buffer, rel);
+      await storage.save(file.buffer, rel, file.mimetype);
       photos.push(storage.urlFor(rel));
     }
 

@@ -50,7 +50,7 @@ router.post('/', requireAuth, upload.single('file'), async (req: AuthedRequest, 
   if (!req.file) return res.status(400).json({ error: 'file is required' });
 
   const relPath = `documents/${targetClientId}/${Date.now()}-${req.file.originalname}`;
-  await storage.save(req.file.buffer, relPath);
+  await storage.save(req.file.buffer, relPath, req.file.mimetype);
   const fileUrl = storage.urlFor(relPath);
 
   const { rows } = await query(

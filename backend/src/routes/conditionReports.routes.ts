@@ -48,7 +48,7 @@ router.post(
     const photoUrls: string[] = [];
     for (const file of fileMap.photos || []) {
       const relPath = `condition-reports/${booking_id}/${Date.now()}-${file.originalname}`;
-      await storage.save(file.buffer, relPath);
+      await storage.save(file.buffer, relPath, file.mimetype);
       photoUrls.push(storage.urlFor(relPath));
     }
 
@@ -56,7 +56,7 @@ router.post(
     const video = (fileMap.video || [])[0];
     if (video) {
       const relPath = `condition-reports/${booking_id}/video-${Date.now()}-${video.originalname}`;
-      await storage.save(video.buffer, relPath);
+      await storage.save(video.buffer, relPath, video.mimetype);
       videoPath = storage.urlFor(relPath);
     }
 

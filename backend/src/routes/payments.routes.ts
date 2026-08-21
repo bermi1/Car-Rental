@@ -83,7 +83,7 @@ router.post('/', requireAuth, upload.single('receipt'), async (req: AuthedReques
   let receiptPath: string | null = null;
   if (req.file) {
     const rel = `receipts/${booking_id}-${Date.now()}-${req.file.originalname}`;
-    await storage.save(req.file.buffer, rel);
+    await storage.save(req.file.buffer, rel, req.file.mimetype);
     receiptPath = storage.urlFor(rel);
   }
 

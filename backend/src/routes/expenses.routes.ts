@@ -100,7 +100,7 @@ router.post(
     let receiptPath: string | null = null;
     if (req.file) {
       const rel = `expenses/${Date.now()}-${req.file.originalname}`;
-      await storage.save(req.file.buffer, rel);
+      await storage.save(req.file.buffer, rel, req.file.mimetype);
       receiptPath = storage.urlFor(rel);
     }
 

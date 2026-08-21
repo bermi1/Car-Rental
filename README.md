@@ -409,6 +409,44 @@ staff can read it out; the same phone number signs in later, sees the rental,
 and can upload their own documents. A number that already belongs to a customer
 is refused rather than duplicated, so nobody's history is split in two.
 
+## Where uploaded files live
+
+Local disk works on a server you own. It does not work on a serverless host:
+the bundle is read-only outside the OS temp directory, and that directory is
+not shared between invocations, so a write succeeds and the file is gone by the
+next request. Every ID photo, walkaround video and logo disappeared silently.
+
+The driver is chosen at boot. Set these two and it uses object storage:
+
+```
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_KEY=<the service_role key>
+```
+
+`SUPABASE_SECRET_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are accepted under those
+names too. The key is server-side only — it bypasses row-level security and
+must never reach the browser. Without both, the driver falls back to local disk
+and says so in the log.
+
+**Two buckets, created on the first upload** so a fresh deployment needs no
+clicking through a dashboard:
+
+- `rental-public` — logos and car photos. On the public catalogue by design, so
+  they are served straight off the CDN.
+- `rental-private` — customer ID documents, driving licences, signed contracts,
+  condition reports, damage photographs, receipts. **No public read at all.**
+  These are evidence about a named person. They are reached through
+  `/uploads/<path>`, which answers with a signed URL that expires after ten
+  minutes, so a link that escapes into a group chat stops working.
+
+Bucket names are overridable with `SUPABASE_PUBLIC_BUCKET` and
+`SUPABASE_PRIVATE_BUCKET`.
+
+Filenames are cleaned before anything is written. Several upload routes build
+the path from the uploaded file's own name, which the client controls: a
+document submitted as `../../../../etc/passwd` is stored as `passwd` inside
+that customer's own folder, and there is no path that reads a file outside it.
+
 ## Removing the demo data
 
 `npm run seed` writes two fake companies so a fresh checkout has something to

@@ -120,7 +120,7 @@ router.post(
 
     const extension = (req.file.originalname.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
     const relPath = `logos/${req.companyId}/${Date.now()}.${extension || 'png'}`;
-    await storage.save(req.file.buffer, relPath);
+    await storage.save(req.file.buffer, relPath, req.file.mimetype);
     const fileUrl = storage.urlFor(relPath);
 
     const { rows } = await query(

@@ -55,7 +55,7 @@ router.post('/generate/:bookingId', requireAuth, requireStaffOrAdmin, async (req
   });
 
   const relPath = `contracts/${booking.id}/${Date.now()}-contract.pdf`;
-  await storage.save(pdfBuffer, relPath);
+  await storage.save(pdfBuffer, relPath, 'application/pdf');
   const fileUrl = storage.urlFor(relPath);
 
   const inserted = await query(
@@ -79,7 +79,7 @@ router.post('/:id/sign', requireAuth, upload.single('signature'), async (req: Au
   if (!req.file) return res.status(400).json({ error: 'signature file is required' });
 
   const relPath = `contracts/signatures/${req.params.id}-${Date.now()}.png`;
-  await storage.save(req.file.buffer, relPath);
+  await storage.save(req.file.buffer, relPath, req.file.mimetype);
   const fileUrl = storage.urlFor(relPath);
 
   const { rows } = await query(

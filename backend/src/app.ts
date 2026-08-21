@@ -6,7 +6,7 @@ import express from 'express';
 import cors from 'cors';
 import { env, configError } from './config/env';
 import { query } from './config/db';
-import { uploadsRoot } from './services/storage';
+import { storage } from './services/storage';
 
 import authRoutes from './routes/auth.routes';
 import vehicleRoutes from './routes/vehicles.routes';
@@ -34,7 +34,21 @@ const app = express();
 
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
-app.use('/uploads', express.static(uploadsRoot));
+/**
+ * Uploaded files, whichever driver holds them.
+ *
+ * Local disk streams the file. Object storage answers with a redirect — a
+ * short-lived signed URL for anything private, so a link that escapes stops
+ * working, and the CDN URL for the logos and car photos that are public by
+ * design.
+ */
+app.get('/uploads/*', async (req, res) => {
+  const relativePath = decodeURIComponent((req.params as any)[0] || '');
+  const found = await storage.resolve(relativePath);
+  if (!found) return res.status(404).json({ error: 'File not found' });
+  if ('redirect' in found) return res.redirect(302, found.redirect);
+  res.sendFile(found.file);
+});
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

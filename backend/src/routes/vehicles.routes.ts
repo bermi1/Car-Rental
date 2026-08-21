@@ -132,7 +132,7 @@ router.post(
     const saved: string[] = [];
     for (const file of files) {
       const relPath = `vehicles/${req.params.id}/${Date.now()}-${file.originalname}`;
-      await storage.save(file.buffer, relPath);
+      await storage.save(file.buffer, relPath, file.mimetype);
       saved.push(storage.urlFor(relPath));
     }
     const { rows } = await query(
