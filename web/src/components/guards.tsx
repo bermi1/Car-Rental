@@ -14,6 +14,19 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Wraps the staff console.
+ *
+ * A customer holds a real account, and nothing stops them typing /fleet into
+ * the address bar. They are sent to their own rentals rather than shown an
+ * error, because the console was never theirs to reach.
+ */
+export function RequireStaff({ children }: { children: React.ReactNode }) {
+  const { isClient } = useAuth();
+  if (isClient) return <Navigate to="/my-rentals" replace />;
+  return <>{children}</>;
+}
+
 /** Wraps routes that only admins may open. */
 export function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();

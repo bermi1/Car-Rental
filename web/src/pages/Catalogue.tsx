@@ -130,7 +130,9 @@ export function Catalogue() {
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             {company.logo_path ? (
-              <img src={assetUrl(company.logo_path)} alt="" className="h-8 w-8 rounded-lg object-cover" />
+              <img src={assetUrl(company.logo_path)} alt="" className="h-8 w-8 rounded-lg object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
             ) : (
               <Logo size={30} />
             )}

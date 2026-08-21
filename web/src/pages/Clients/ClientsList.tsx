@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Button,
   Card,
   CardToolbar,
   DataTable,
@@ -60,7 +61,15 @@ export function ClientsList() {
 
   return (
     <>
-      <PageHeader title={t('nav.clients')} description="Everyone who has rented from you." />
+      <PageHeader
+        title={t('nav.clients')}
+        description="Everyone who has rented from you."
+        actions={
+          <Link to="/clients/new">
+            <Button icon="plus">Register customer</Button>
+          </Link>
+        }
+      />
 
       <div className="mb-4 flex justify-end">
         <SearchInput
@@ -78,7 +87,18 @@ export function ClientsList() {
           <EmptyState
             icon="users"
             title={search ? 'No matching clients' : 'No clients yet'}
-            description={search ? 'Try a different search term.' : 'Clients appear here once they register.'}
+            description={
+              search
+                ? 'Try a different search term.'
+                : 'Register a walk-in customer, or wait for someone to sign up themselves.'
+            }
+            action={
+              !search && (
+                <Link to="/clients/new">
+                  <Button icon="plus">Register customer</Button>
+                </Link>
+              )
+            }
           />
         ) : (
           <>

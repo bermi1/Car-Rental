@@ -17,6 +17,8 @@ import type { SystemSettings } from '@rental/shared';
 import { api, ApiError } from '../api/client';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { CatalogueShare } from '../components/CatalogueShare';
+import { BusinessProfile } from '../components/BusinessProfile';
+import { TermsEditor } from '../components/TermsEditor';
 import { useAuth } from '../context/AuthContext';
 
 interface SeasonalPricing {
@@ -35,6 +37,9 @@ export function Settings() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [rate, setRate] = useState('');
   const [defaultRate, setDefaultRate] = useState('');
+  const [lateFee, setLateFee] = useState('');
+  const [fuelFee, setFuelFee] = useState('');
+  const [depositPercent, setDepositPercent] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +54,9 @@ export function Settings() {
       setSettings(s);
       setRate(String(s.usd_to_tzs_rate));
       setDefaultRate(String(s.default_daily_rate_tzs));
+      setLateFee(String(s.late_return_fee_per_day_tzs ?? 0));
+      setFuelFee(String(s.fuel_shortfall_fee_tzs ?? 0));
+      setDepositPercent(String(s.deposit_percent ?? 0));
     });
     api.get<SeasonalPricing[]>('/settings/seasonal-pricing').then(setSeasonal);
   }
@@ -63,6 +71,9 @@ export function Settings() {
       await api.put('/settings', {
         usd_to_tzs_rate: Number(rate),
         default_daily_rate_tzs: Number(defaultRate),
+        late_return_fee_per_day_tzs: Number(lateFee),
+        fuel_shortfall_fee_tzs: Number(fuelFee),
+        deposit_percent: Number(depositPercent),
       });
       setSaved(true);
       load();
@@ -107,7 +118,7 @@ export function Settings() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Settings" description="Pricing rules, quotes, and your public catalogue." />
+      <PageHeader title="Settings" description="Your business details, pricing rules, contract terms and public catalogue." />
 
       <ErrorNotice message={error} />
 
@@ -116,6 +127,10 @@ export function Settings() {
           <CatalogueShare slug={company.slug} companyName={company.name} />
         </div>
       )}
+
+      <div className="mb-6">
+        <BusinessProfile />
+      </div>
 
       <Card className="mt-4">
         <CardHeader>
@@ -151,6 +166,39 @@ export function Settings() {
                 setSaved(false);
               }}
             />
+            <Input
+              label="Late Return Penalty (TZS per day)"
+              type="number"
+              min="0"
+              value={lateFee}
+              onChange={(e) => {
+                setLateFee(e.target.value);
+                setSaved(false);
+              }}
+              hint="Charged for every day a car is kept past its return date."
+            />
+            <Input
+              label="Fuel Shortfall Fee (TZS)"
+              type="number"
+              min="0"
+              value={fuelFee}
+              onChange={(e) => {
+                setFuelFee(e.target.value);
+                setSaved(false);
+              }}
+              hint="Charged when a car comes back below the fuel it left on."
+            />
+            <Input
+              label="Deposit (% of the quote)"
+              type="number"
+              min="0"
+              max="100"
+              value={depositPercent}
+              onChange={(e) => {
+                setDepositPercent(e.target.value);
+                setSaved(false);
+              }}
+            />
           </div>
 
           <div className="flex items-center gap-3">
@@ -170,6 +218,10 @@ export function Settings() {
           Last updated {formatDateTime(settings.updated_at)}
         </p>
       </Card>
+
+      <div className="mt-6">
+        <TermsEditor />
+      </div>
 
       <Card className="mt-6">
         <CardHeader>

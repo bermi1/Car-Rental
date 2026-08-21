@@ -101,8 +101,17 @@ export interface ConditionReport {
 export interface Contract {
   id: string;
   booking_id: string;
+  /** Empty for an agreement signed through the share link — its wording is on the row. */
   pdf_file_path: string;
+  /** The rendered agreement, frozen at signature. */
+  body: string | null;
+  reference: string | null;
   signed: boolean;
+  /** The name the customer typed as their signature. */
+  signed_name: string | null;
+  signed_at: string | null;
+  terms_accepted: boolean;
+  terms_accepted_at: string | null;
   signature_file_path: string | null;
   generated_at: string;
 }
@@ -141,5 +150,12 @@ export interface StaffUser {
 export interface SystemSettings {
   usd_to_tzs_rate: number;
   default_daily_rate_tzs: number;
+  /** Charged for each day a car is kept past its agreed return date. */
+  late_return_fee_per_day_tzs: number;
+  /** Charged when a car comes back below the fuel level it left on. */
+  fuel_shortfall_fee_tzs: number;
+  /** Share of the quote taken up front, as a percentage. */
+  deposit_percent: number;
+  payment_instructions: string | null;
   updated_at: string;
 }

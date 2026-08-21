@@ -84,13 +84,13 @@ function Brand() {
 }
 
 export function Landing() {
-  const { user, loading } = useAuth();
+  const { user, loading, homePath } = useAuth();
   const { language, setLanguage, t } = useI18n();
   const { theme, toggle } = useTheme();
 
   // Don't flash the marketing page at someone who is already signed in.
   if (loading) return <Splash />;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={homePath} replace />;
 
   const features = language === 'sw' ? FEATURES_SW : FEATURES_EN;
   const sw = language === 'sw';
@@ -167,8 +167,13 @@ export function Landing() {
                 {sw ? 'Ingia kwenye mfumo' : 'Sign in to the console'}
               </Button>
             </Link>
-            <a href="#features" className="w-full sm:w-auto">
+            <Link to="/signup" className="w-full sm:w-auto">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                {sw ? 'Fungua akaunti ya mteja' : 'Create a customer account'}
+              </Button>
+            </Link>
+            <a href="#features" className="w-full sm:w-auto">
+              <Button size="lg" variant="ghost" className="w-full sm:w-auto">
                 {sw ? 'Ona inavyofanya kazi' : 'See how it works'}
               </Button>
             </a>

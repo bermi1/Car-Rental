@@ -305,10 +305,17 @@ browser, so nothing about the company is sent to a QR service.
 
 Two different things create the two kinds of account:
 
-**Clients register themselves.** `POST /api/auth/client/register` takes a name,
-a phone number and a password; email is optional. A client account is
+**Clients register themselves.** Anyone can open a customer account at
+`/signup` — no invitation needed. `POST /api/auth/client/register` takes a name,
+a phone number and a password; email is optional. Staff can also register a
+customer at the desk (see *Registering a walk-in customer* below). A client account is
 platform-wide, not tied to one company — the company comes from the car they
 book. Sign-in accepts the phone number or the email as the identifier.
+
+There is one sign-in box for everybody: staff are addressed by email and
+customers by phone number, so the identifier itself decides which door to knock
+on. A customer who signs in lands on **their own rentals** and is kept out of
+the staff console entirely.
 
 **Staff accounts are created in the console**, never by self-registration:
 
@@ -334,3 +341,85 @@ book. Sign-in accepts the phone number or the email as the identifier.
 - **Location sharing is foreground-only.** The app pings while the client has
   it open. No background task is registered, so a phone in a pocket with the
   app closed reports nothing.
+
+## The rental agreement
+
+A contract is a document, not a checkbox. `POST /api/contracts/booking/:id/share`
+returns a link — `/r/<token>` — which staff send over WhatsApp or SMS. The token
+stands for one booking and nothing else, so nothing else is reachable through it
+and the customer needs no account to open it.
+
+The page shows the car, the dates, the itemised charges and the agreement in
+full. The **Accept** box stays disabled until the customer has scrolled to the
+end of it, and the sign button stays disabled until the box is ticked. Signing
+records three separate facts — that the terms were accepted, the name typed as
+the signature, and when — alongside the request's IP and browser, so "they
+ticked a box" can never be mistaken for "they read it and signed".
+
+The contract body is frozen at signature. Rates and terms change; what was
+agreed must still read the same in a year.
+
+**Editing the terms** (Settings → Rental terms and conditions) files a new
+version rather than changing the old one. A contract already signed keeps
+pointing at the wording it was signed under.
+
+## What a rental actually costs
+
+`GET /api/bookings/:id/bill` works the bill out line by line: the rental, the
+extras at their per-day or one-off price, a late-return penalty for every day
+past the return date, a fuel shortfall, damages that have been charged, less any
+discount and anything already paid.
+
+Two rates drive the penalties, both set per company on **Settings**:
+
+- **Late return penalty** — charged per day. While a car is still out the figure
+  moves, recalculated each time the bill is read. At return it is frozen onto the
+  booking, or every later view would keep growing.
+- **Fuel shortfall fee** — the price of a full tank. The charge is proportional
+  to how far the gauge fell between the two handover reports, so half a tank
+  short costs half the fee rather than a flat penalty for one needle-width.
+
+A figure a staff member has already written onto a booking always wins: waivers
+and negotiated amounts are not recomputed away.
+
+Every figure is read from the database. Nothing comes from the request, so a
+client cannot talk its own bill down.
+
+## Fleet follows the bookings
+
+A car's status is not typed in twice. Confirming, activating, completing or
+cancelling a booking re-derives the vehicle's status: **booked** while a
+confirmed or active rental exists, **available** otherwise. Only rows already in
+those two states are touched — a car a human put in the garage or withdrew from
+service stays where they put it.
+
+Creating a booking over dates the car is already spoken for is refused outright.
+Without that, "booked" is decoration: two people could hold the same car and
+only find out at the counter.
+
+## Registering a walk-in customer
+
+Most people walk in rather than arriving through the app. **Customers → Register
+customer** captures the full record — identification, licence and its expiry,
+address, emergency contact — and the documents in hand, photographed there and
+then.
+
+The account created is a real one. A password is generated and shown **once** so
+staff can read it out; the same phone number signs in later, sees the rental,
+and can upload their own documents. A number that already belongs to a customer
+is refused rather than duplicated, so nobody's history is split in two.
+
+## Removing the demo data
+
+`npm run seed` writes two fake companies so a fresh checkout has something to
+look at. A live system must not carry it — the passwords are published in this
+repository.
+
+```bash
+npm run remove-demo-data            # lists what would go, deletes nothing
+npm run remove-demo-data -- --confirm
+```
+
+It deletes by the exact identifiers the seed writes and nothing else, so a real
+company with a similar name is never caught by it. If that leaves no platform
+owner, it says so and tells you how to create yours.

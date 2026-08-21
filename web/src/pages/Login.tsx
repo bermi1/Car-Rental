@@ -9,7 +9,7 @@ import { LogoStacked } from '../components/Logo';
 import { Splash } from '../components/Splash';
 
 export function Login() {
-  const { login, user, loading } = useAuth();
+  const { login, user, loading, homePath } = useAuth();
   const { theme, toggle } = useTheme();
   const { language, setLanguage, t } = useI18n();
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export function Login() {
   const [submitting, setSubmitting] = useState(false);
 
   if (loading) return <Splash />;
-  if (user) return <Navigate to={(location.state as any)?.from || '/dashboard'} replace />;
+  if (user) return <Navigate to={(location.state as any)?.from || homePath} replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +29,7 @@ export function Login() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      navigate((location.state as any)?.from || '/dashboard', { replace: true });
+      navigate((location.state as any)?.from || homePath, { replace: true });
     } catch (err: any) {
       // Surface what the server actually said — "Invalid credentials" and
       // "This account is not linked to a company" need different fixes, and a
@@ -130,11 +130,12 @@ export function Login() {
             <form onSubmit={handleSubmit} className="mt-7 space-y-4">
               <Input
                 label={t('login.email')}
-                type="email"
+                name="identifier"
+                type="text"
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="admin@rental.co.tz"
+                placeholder="you@company.co.tz or 0712 345 678"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -142,6 +143,7 @@ export function Login() {
               />
               <Input
                 label={t('login.password')}
+                name="password"
                 type="password"
                 autoComplete="current-password"
                 placeholder="••••••••"
@@ -157,7 +159,14 @@ export function Login() {
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-xs leading-relaxed text-fg-subtle">{t('login.hint')}</p>
+            <p className="mt-6 text-center text-[13px] text-fg-muted">
+              {sw ? 'Wewe ni mteja mpya?' : 'Renting a car for the first time?'}{' '}
+              <Link to="/signup" className="font-medium text-accent hover:opacity-75">
+                {sw ? 'Fungua akaunti' : 'Create an account'}
+              </Link>
+            </p>
+
+            <p className="mt-4 text-center text-xs leading-relaxed text-fg-subtle">{t('login.hint')}</p>
           </div>
         </div>
       </div>

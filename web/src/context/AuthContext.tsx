@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { StaffUser } from '@rental/shared';
+import type { StaffRole, StaffUser } from '@rental/shared';
 import { api, setToken, clearToken, getToken, setActiveCompany, getActiveCompany } from '../api/client';
 
 export interface Company {
@@ -8,13 +8,41 @@ export interface Company {
   slug: string;
 }
 
+/**
+ * Whoever is signed in — staff or customer.
+ *
+ * Both kinds of account are real accounts against the same API, so the app
+ * carries one shape for both and lets `role` say which it is. A customer's
+ * row calls their name `full_name`; it is normalised here so no page has to
+ * know which kind of user it is rendering.
+ */
+export interface SessionUser {
+  id: string;
+  name: string;
+  email: string | null;
+  role: StaffRole | 'client';
+  company_id?: string | null;
+}
+
+export interface ClientRegistration {
+  full_name: string;
+  phone: string;
+  email?: string;
+  password: string;
+}
+
 interface AuthContextValue {
-  user: StaffUser | null;
+  user: SessionUser | null;
   company: Company | null;
   loading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** A customer rather than someone who works for a rental company. */
+  isClient: boolean;
+  /** Where this account belongs after signing in. */
+  homePath: string;
+  login: (identifier: string, password: string) => Promise<void>;
+  registerClient: (details: ClientRegistration) => Promise<void>;
   logout: () => void;
   /** Super admins only: choose which tenant to act inside. */
   switchCompany: (company: Company | null) => void;
@@ -22,14 +50,25 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+interface ClientAccount {
+  id: string;
+  full_name: string;
+  email: string | null;
+}
+
 interface MeResponse {
   role: string;
   user: StaffUser & { company_id: string | null };
   company: Company | null;
 }
 
+/** Folds a customer record into the shape the rest of the app reads. */
+function asSessionUser(client: ClientAccount): SessionUser {
+  return { id: client.id, name: client.full_name, email: client.email, role: 'client' };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<(StaffUser & { company_id?: string | null }) | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,6 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api
       .get<MeResponse>('/auth/me')
       .then(async (res) => {
+        if (res.role === 'client') {
+          setUser(asSessionUser(res.user as unknown as ClientAccount));
+          return;
+        }
         setUser(res.user);
         if (res.company) {
           setCompany(res.company);
@@ -61,15 +104,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
-    const res = await api.post<{ token: string; user: StaffUser; company: Company | null }>(
-      '/auth/staff/login',
-      { email, password }
-    );
+  /**
+   * One sign-in box for everybody.
+   *
+   * Staff accounts are addressed by email and customers by phone number, so
+   * the identifier itself says which door to knock on — nobody has to know
+   * which kind of account they hold before they can sign in.
+   */
+  async function login(identifier: string, password: string) {
+    if (identifier.includes('@')) {
+      const res = await api.post<{ token: string; user: StaffUser; company: Company | null }>(
+        '/auth/staff/login',
+        { email: identifier, password }
+      );
+      setToken(res.token);
+      setUser(res.user);
+      setCompany(res.company);
+      setActiveCompany(res.company?.id ?? null);
+      return;
+    }
+
+    const res = await api.post<{ token: string; user: ClientAccount }>('/auth/client/login', {
+      identifier,
+      password,
+    });
     setToken(res.token);
-    setUser(res.user);
-    setCompany(res.company);
-    setActiveCompany(res.company?.id ?? null);
+    setUser(asSessionUser(res.user));
+    setCompany(null);
+    setActiveCompany(null);
+  }
+
+  async function registerClient(details: ClientRegistration) {
+    const res = await api.post<{ token: string; user: ClientAccount }>('/auth/client/register', details);
+    setToken(res.token);
+    setUser(asSessionUser(res.user));
+    setCompany(null);
+    setActiveCompany(null);
   }
 
   function logout() {
@@ -85,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const role = user?.role as string | undefined;
+  const isClient = role === 'client';
 
   return (
     <AuthContext.Provider
@@ -94,7 +165,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         isAdmin: role === 'admin' || role === 'super_admin',
         isSuperAdmin: role === 'super_admin',
+        isClient,
+        homePath: isClient ? '/my-rentals' : '/dashboard',
         login,
+        registerClient,
         logout,
         switchCompany,
       }}

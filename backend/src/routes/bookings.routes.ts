@@ -1,9 +1,12 @@
 import { Router } from 'express';
+import { randomBytes } from 'crypto';
 import { query } from '../config/db';
 import { requireAuth, requireStaffOrAdmin, resolveCompany, AuthedRequest } from '../middleware/auth';
 import { calculateQuote } from '../utils/pricing';
 import { logActivity } from '../services/activityLog';
 import { canConfirmBooking, maybeAdvanceToDocumentsSubmitted } from '../services/bookingWorkflow';
+import { syncVehicleStatus, isVehicleFree } from '../services/fleetStatus';
+import { buildBill, settleOnReturn } from '../services/billing';
 
 const router = Router();
 
@@ -54,6 +57,43 @@ router.get('/', requireAuth, resolveCompany, async (req: AuthedRequest, res) => 
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const { rows } = await query(`${BOOKING_SELECT} ${where} ORDER BY b.created_at DESC`, params);
+  res.json(rows);
+});
+
+/**
+ * A signed-in customer's own rentals.
+ *
+ * Each one carries the token that opens its agreement, minted here if staff
+ * never sent a link — so a customer who signs in lands on their car either
+ * way, rather than on an empty page waiting for someone at the desk.
+ */
+router.get('/mine', requireAuth, async (req: AuthedRequest, res) => {
+  if (req.user!.role !== 'client') return res.status(403).json({ error: 'Forbidden' });
+
+  const { rows } = await query(
+    `SELECT b.id, b.start_date, b.end_date, b.status, b.pickup_region, b.dropoff_region,
+            b.quoted_amount, b.quoted_currency, b.share_token, b.created_at,
+            v.make, v.model, v.year, v.photos,
+            co.name AS company_name, co.logo_path
+       FROM bookings b
+       JOIN vehicles v ON v.id = b.vehicle_id
+       JOIN companies co ON co.id = b.company_id
+      WHERE b.client_id = $1
+      ORDER BY b.start_date DESC`,
+    [req.user!.sub]
+  );
+
+  for (const booking of rows) {
+    if (!booking.share_token) {
+      const token = randomBytes(24).toString('base64url');
+      await query(
+        'UPDATE bookings SET share_token = $1, share_token_created_at = now() WHERE id = $2',
+        [token, booking.id]
+      );
+      booking.share_token = token;
+    }
+  }
+
   res.json(rows);
 });
 
@@ -140,6 +180,15 @@ router.post('/', requireAuth, async (req: AuthedRequest, res) => {
 
   if (!vehicle_id || !resolvedClientId || !start_date || !end_date || !pickup_region || !dropoff_region) {
     return res.status(400).json({ error: 'Missing required booking fields' });
+  }
+
+  // Refuse a car that is already spoken for over these dates. Without this,
+  // the fleet's "booked" status is decoration — two people could hold the same
+  // car and only find out at the counter.
+  if (!(await isVehicleFree(vehicle_id, start_date, end_date))) {
+    return res.status(409).json({
+      error: 'That car is already booked for those dates. Choose other dates or another car.',
+    });
   }
 
   const is_cross_region = pickup_region.trim().toLowerCase() !== dropoff_region.trim().toLowerCase();
@@ -250,6 +299,10 @@ router.post('/:id/confirm', requireAuth, resolveCompany, requireStaffOrAdmin, as
   );
   if (!rows[0]) return res.status(400).json({ error: 'Booking must be in documents_submitted status to confirm' });
 
+  // A confirmed car is no longer free, so the fleet must say so immediately —
+  // this is what stopped two customers being promised the same vehicle.
+  await syncVehicleStatus(rows[0].vehicle_id);
+
   await logActivity({
     actorStaffId: req.user!.sub,
     action: 'booking_confirmed',
@@ -269,7 +322,7 @@ router.post('/:id/activate', requireAuth, resolveCompany, requireStaffOrAdmin, a
     [req.params.id]
   );
   if (!rows[0]) return res.status(400).json({ error: 'Booking must be confirmed to activate' });
-  await query("UPDATE vehicles SET status = 'booked' WHERE id = $1", [rows[0].vehicle_id]);
+  await syncVehicleStatus(rows[0].vehicle_id);
   await logActivity({
     actorStaffId: req.user!.sub,
     action: 'booking_activated',
@@ -289,7 +342,12 @@ router.post('/:id/complete', requireAuth, resolveCompany, requireStaffOrAdmin, a
     [req.params.id]
   );
   if (!rows[0]) return res.status(400).json({ error: 'Booking must be active to complete' });
-  await query("UPDATE vehicles SET status = 'available' WHERE id = $1", [rows[0].vehicle_id]);
+
+  // Lateness stops being a moving number the moment the car is back — freeze
+  // it here or every later view of the bill keeps growing.
+  await settleOnReturn(req.params.id);
+  await syncVehicleStatus(rows[0].vehicle_id);
+
   await logActivity({
     actorStaffId: req.user!.sub,
     action: 'booking_completed',
@@ -310,8 +368,34 @@ router.post('/:id/cancel', requireAuth, async (req: AuthedRequest, res) => {
     "UPDATE bookings SET status = 'cancelled' WHERE id = $1 RETURNING *",
     [req.params.id]
   );
-  await query("UPDATE vehicles SET status = 'available' WHERE id = $1", [rows[0].vehicle_id]);
+  // Not a blanket "available": the car may still be held by another booking,
+  // or be sitting in the garage. The rule decides, not this endpoint.
+  await syncVehicleStatus(rows[0].vehicle_id);
   res.json(rows[0]);
+});
+
+/**
+ * The bill for a booking, itemised.
+ *
+ * Rental, extras, late return, fuel, charged damages, less what has been
+ * confirmed paid. Readable by the client it belongs to and by staff inside the
+ * company that owns it — nobody else.
+ */
+router.get('/:id/bill', requireAuth, async (req: AuthedRequest, res) => {
+  const { rows } = await query('SELECT client_id, company_id FROM bookings WHERE id = $1', [req.params.id]);
+  const booking = rows[0];
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+  const allowed =
+    req.user!.role === 'super_admin' ||
+    (req.user!.role === 'client'
+      ? booking.client_id === req.user!.sub
+      : booking.company_id === req.user!.companyId);
+  if (!allowed) return res.status(403).json({ error: 'Forbidden' });
+
+  const bill = await buildBill(req.params.id);
+  if (!bill) return res.status(404).json({ error: 'Booking not found' });
+  res.json(bill);
 });
 
 export default router;

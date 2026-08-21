@@ -59,10 +59,10 @@ export const en = {
   // Login
   'login.title': 'BERMI RENTALS',
   'login.subtitle': 'Sign in to manage fleet and bookings',
-  'login.email': 'Email',
+  'login.email': 'Email or phone number',
   'login.password': 'Password',
   'login.submit': 'Sign in',
-  'login.hint': 'Admin and staff sign in here — your role decides what you see.',
+  'login.hint': 'Staff sign in with their email, customers with their phone number.',
   'login.failed': 'Could not sign in',
 
   // Overview
@@ -247,10 +247,10 @@ export const sw: Translations = {
   // Login
   'login.title': 'BERMI RENTALS',
   'login.subtitle': 'Ingia kusimamia magari na kukodi',
-  'login.email': 'Barua pepe',
+  'login.email': 'Barua pepe au namba ya simu',
   'login.password': 'Nenosiri',
   'login.submit': 'Ingia',
-  'login.hint': 'Msimamizi na wafanyakazi wanaingia hapa — cheo chako kinaamua unachoona.',
+  'login.hint': 'Wafanyakazi wanatumia barua pepe, wateja wanatumia namba ya simu.',
   'login.failed': 'Imeshindwa kuingia',
 
   // Overview
